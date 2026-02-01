@@ -56,6 +56,10 @@ const Router = {
             'areaListingPage': {
                 module: 'areaListing',
                 title: 'Area Listing'
+            },
+            'customerListingPage': {
+                module: 'customerListing',
+                title: 'Customer Listing'
             }
         };
 

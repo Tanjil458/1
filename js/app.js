@@ -136,7 +136,9 @@ const App = {
             'employeeListingPage': '#employee-listing',
             'productListingPage': '#product-listing',
             'historyPage': '#history',
-            'settingsPage': '#settings'
+            'settingsPage': '#settings',
+            'customerListingPage': '#customer-listing',
+            'areaListingPage': '#area-listing'
         };
 
         // Remove all active states from side nav
@@ -175,6 +177,9 @@ const App = {
                 break;
             case 'area-listing':
                 this.navigateTo('areaListingPage');
+                break;
+            case 'customer-listing':
+                this.navigateTo('customerListingPage');
                 break;
             case 'history':
                 this.navigateTo('historyPage');

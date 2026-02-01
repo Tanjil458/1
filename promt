@@ -1,93 +1,12 @@
-DETAILED AGENT PROMPT — Credit (Unpaid) Card (A‑to‑Z: Design, UI, Logic, Inputs, Popups, JS)
+Add a new **Customer Listing** page and link it in the **side nav bar**. It should be **identical in layout, behavior, and UI** to the other listing pages (table, search, add/edit/delete, swipe-to-delete, history/save, etc.).
 
-Goal
-Add a new “Credit (Unpaid)” card to the Delivery Calculation page. It must look consistent with the app, be compact, and integrate into totals. This card tracks unpaid amounts (credit) separately from expenses. Only this new card and its related logic are added; existing UI/logic remains unchanged.
+**Only difference:** the **Add Customer** popup must include an **Area** field as a **dropdown select**. The dropdown options must be loaded from the **Area Listing** page’s saved areas.
 
-Placement
-Insert the Credit card directly after “Extra Expenses” card and before “Summary” card.
-
-UI Structure (Exact)
-Card title: “Credit (Unpaid)”
-Table ID: creditTable
-Columns: “Customer” | “Amount”
-Add button: “+ Add Credit” (full width)
-Total line: “Credit: ৳ <totalCredit>” aligned right
-
-Input Rules
-- Customer: text input (optional but recommended)
-- Amount: number input (required, > 0)
-- Each row has editable amount input; changes trigger recalculation
-- Customer name should be visible and left aligned
-
-Modal/Popup (Recommended)
-Use a modal similar to Expense modal for adding credit items:
-- Modal ID: creditModal
-- Fields: Customer Name, Amount
-- Buttons: Cancel, Save
-- Validation: amount must be > 0 (customer can be empty)
-
-Design Requirements
-- Keep same card style: white background, rounded corners, soft shadow
-- Table compact; font size 11px
-- Inputs same style as others (border, radius, focus)
-- Total row text bold
-
-JavaScript Requirements
-State:
-- creditBody = document.querySelector('#creditTable tbody');
-
-Functions:
-1) addCredit() — open modal
-2) closeCreditModal() — close modal
-3) saveCreditFromModal() — validate input, append row
-4) calcAll() — include credit total
-
-Row Template
-<tr>
-	<td>Customer Name</td>
-	<td><input type="number" value="amount"></td>
-</tr>
-
-Event Hooks
-- On amount input change: calcAll()
-- Add swipe‑to‑delete to credit rows (same pattern as expenses)
-
-Calculation Logic Update
-Existing net:
-Net = Sales − Cash − Expenses
-
-New net:
-Net = Sales − Cash − Expenses − Credit
-
-Totals:
-- totalCredit = sum of credit amounts
-- Display in credit card and in Summary (new row)
-
-Summary Box Update
-Add new summary row:
-- “Total Credit:” ৳ <summaryCredit>
-Update Net row accordingly.
-
-Data Save (History)
-When saving calculation:
-- Add credit data array to calcObj:
-	credit: [{ name, amount }]
-- Add totalCredit to calcObj
-
-When viewing/printing:
-- Display credit section similar to expenses (optional but recommended)
-
-When editing a saved calculation:
-- Load credit rows into creditTable
-
-Validation Messages
-- If credit amount invalid: “Please enter a valid credit amount”
-
-Acceptance Criteria
-- Credit card UI matches app style
-- Credit totals update live
-- Net reflects credit
-- Credit rows can be added/edited/deleted
-- Saved history includes credit details
-
-End of Prompt
+Requirements:
+- The customer list and its add/edit/delete flow must match existing listing pages.
+- Area field in the Add/Edit popup:
+	- Use a dropdown select.
+	- Populate options from saved Area listing data.
+	- Store the selected area with the customer record.
+- Keep naming/structure consistent with existing listing pages.
+- Update side nav to include “Customer Listing”.
