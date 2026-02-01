@@ -1,125 +1,50 @@
-DETAILED AGENT PROMPT — Delivery Calculation Card Table (Exact Clone)
+DETAILED AGENT PROMPT — Hide Dropdown Arrow After Selection (More Text Visible)
 
 Goal
-Recreate the Delivery Calculation card table and all its behaviors exactly as in the current app. The table sizing, column widths, inputs, calculations, popups, and UI styling must match existing behavior with no functional differences.
+After a product is selected, hide or minimize the native dropdown arrow so more of the product name is visible, without changing any other behavior, layout, or calculations. The selection must remain editable (user can still open the dropdown to change).
 
-Scope (Only this card + dependencies it requires)
-1) Delivery Calculation card (table with product rows)
-2) Row add/remove logic
-3) Live calculations for Sold/Total and Sales summary
-4) Swipe‑to‑delete + confirmation popup used by rows
-5) Product dropdown population and price auto‑fill
-6) All exact input/readonly rules
+Constraints (Must Not Change)
+- Do NOT change table column widths or layout.
+- Do NOT replace the <select> with a different control.
+- Do NOT break accessibility or keyboard navigation.
+- Do NOT alter calculation logic or any other UI.
 
-UI Requirements (Exact)
-Card Title: “Delivery Calculation”
-Table ID: invTable
-Table columns and widths (must match):
-- Product (min-width: 80px)
-- DC (width: 40px, green column)
-- DP (width: 40px, green column)
-- RC (width: 40px, red column)
-- RP (width: 40px, red column)
-- Sold (width: 50px, readonly text)
-- Price (width: 60px, input)
-- Total (width: 70px, readonly text)
-Wrap table in an overflow‑x container.
+Preferred Approach (CSS-only, safe)
+Use a class on the select once it has a value, and hide the native arrow while keeping the control functional.
 
-Buttons/Labels
-- “+ Add Product” button below table, full width.
-- “Sales: ৳ <value>” aligned right under button.
+Implementation Steps
+1) On product selection change:
+	- If a valid product is selected, add a class: .selected
+	- If empty/unselected, remove the class.
 
-Input vs Read‑only (must match)
-Editable inputs:
-- DC, DP, RC, RP, Price
-- Product dropdown
-Read‑only display only:
-- Sold
-- Total
-Default values on row creation:
-- All numeric inputs = 0
-- Sold = 0, Total = 0
+2) CSS to hide the arrow (cross‑browser best effort):
+	- For modern browsers: appearance: none; background-image: none;
+	- For IE/Edge legacy: select::-ms-expand { display: none; }
+	- Keep padding-right minimal so text has more space.
 
-CSS/Design for Table
-Use existing styles:
-- Table font size 11px
-- Inputs centered text, 11px
-- Green columns: .col-green background #d4edda
-- Red columns: .col-red background #f8d7da
-- Read‑only cells: .readonly with gray background and bold text
+3) Maintain click behavior:
+	- Do NOT set pointer-events: none.
+	- Keep the select focusable.
 
-Row Add Behavior
-Function: addRow()
-- Create <tr> with proper cell structure.
-- Product <select> populated with product names (value=product name).
-- On product change: set price input to product.price, then recalc.
-- Attach oninput to all inputs/selects → calcAll().
-- Enable swipe‑to‑delete on row (see swipe section).
+Example CSS (scope to Product column only)
+- #invTable td:first-child select.selected {
+	 appearance: none;
+	 -webkit-appearance: none;
+	 -moz-appearance: none;
+	 background-image: none;
+	 padding-right: 4px; /* reduce reserved space */
+  }
+- #invTable td:first-child select.selected::-ms-expand { display: none; }
 
-Data Sources
-Products array from IndexedDB products store:
-- Fields: name, pcs (pieces per carton), price
-Must read products before first row is added.
+Example JS Hook
+- On selection change:
+  if (this.value) this.classList.add('selected');
+  else this.classList.remove('selected');
 
-Calculation Logic (Exact)
-For each row:
-- p = selected product (by name)
-- Delivery = (DC * p.pcs) + DP
-- Return = (RC * p.pcs) + RP
-- Sold = max(0, Delivery − Return)
-- Price = user input if set (number), otherwise p.price
-- Total = Sold * Price
-- Display Total = Math.round(total)
-Sales summary:
-- Sales = sum of all row totals
-- Display Math.round(sales)
-
-Edge Rules
-- If product is not selected, skip calculation for that row.
-- If price input empty/0, fallback to p.price (current behavior uses +value || p.price).
-
-Swipe‑to‑Delete Behavior (Exact)
-Function: addSwipeToDelete(row, deleteCallback)
-Touch behavior:
-- touchstart: ignore if target is INPUT or SELECT.
-- Track startX, currentX.
-- If horizontal move > 10px, prevent default to avoid scroll.
-- If diff > 0 and < 150, translate row left and set background to #ffe6e6.
-- On touchend: if moved and diff > 100, show delete confirm popup.
-- On confirm: animate row left then call deleteCallback after 300ms.
-- On cancel or insufficient swipe: reset transform and background.
-
-Delete Confirmation Popup (Exact Design/Structure)
-Overlay: #deleteConfirmPopup
-Add/remove “show” class to display.
-Box contains:
-- Icon: ⚠️
-- Title: “Delete this item?”
-- Text: “This action cannot be undone. Are you sure you want to delete this item?”
-- Buttons: Cancel and Delete
-Actions:
-- Cancel -> close popup without deleting
-- Delete -> invoke pendingDeleteCallback, then close
-
-JS Functions Required (Exact names)
-- addRow()
-- calcAll()
-- addSwipeToDelete(row, deleteCallback)
-- showDeleteConfirm(callback)
-- closeDeleteConfirm()
-- confirmDeleteAction()
-
-Implementation Notes
-- Use existing IDs and class names exactly.
-- Must preserve table sizing and column widths; do not alter layout.
-- All calculations must re‑run on any input change.
-- The UI must be mobile friendly and allow vertical scroll during swipe.
-
-Acceptance Checklist
-- Table matches sizes/columns in current app.
-- Inputs and readonly fields match rules exactly.
-- Sales updates correctly on every change.
-- Swipe delete + confirmation popup behaves exactly.
-- Product selection and price autofill works the same.
+Acceptance Criteria
+- After a product is selected, the dropdown arrow is hidden or minimized.
+- More product name text is visible within the same column width.
+- Dropdown still opens and works on click/tap.
+- No changes to other columns, layouts, or calculations.
 
 End of Prompt

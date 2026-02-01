@@ -210,6 +210,7 @@ const DeliveryModule = {
 				select.appendChild(option);
 			});
 			select.value = currentValue;
+			select.classList.toggle('selected', !!select.value);
 		});
 	},
 
@@ -234,11 +235,16 @@ const DeliveryModule = {
 		this.refreshProductSelects();
 
 		const productSelect = row.querySelector('.product-select');
+		productSelect.title = productSelect.value || '';
 		if (data.product) {
 			productSelect.value = data.product;
+			productSelect.title = data.product;
 		}
+		productSelect.classList.toggle('selected', !!productSelect.value);
 
 		productSelect.addEventListener('change', () => {
+			productSelect.title = productSelect.value || '';
+			productSelect.classList.toggle('selected', !!productSelect.value);
 			const product = this.getProductByName(productSelect.value);
 			if (product) {
 				const priceInput = row.querySelector('.price-input');

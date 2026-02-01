@@ -348,6 +348,32 @@
     color: #495057;
 }
 
+#invTable th:first-child {
+    text-align: center;
+}
+
+#invTable td:first-child {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+#invTable td:first-child select {
+    font-weight: 600;
+}
+
+#invTable td:first-child select.selected {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: none;
+    padding-right: 4px;
+}
+
+#invTable td:first-child select.selected::-ms-expand {
+    display: none;
+}
+
 .btn-block {
     width: 100%;
     display: block;
