@@ -39,7 +39,7 @@ const Router = {
             },
             'reportsPage': {
                 module: 'reports',
-                title: 'Reports'
+                title: 'Monthly'
             },
             'settingsPage': {
                 module: 'settings',

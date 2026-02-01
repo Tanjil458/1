@@ -1,85 +1,11 @@
-PROMPT FOR AGENT: Replicate Report (Monthly) Page A–Z + add Yearly Sales
+--------------------custommer name, area name--------------------
+--------------------Mobile number--------------------
+--------------------Date of creadit--------------------
+initial amount ---------------------------5000$
+paid amount ---------------------------2000$
+remaining amount ---------------------------3000$
 
-Goal
-- Rebuild the Report page exactly as in the source app (Monthly Delivery Report), including UI, behavior, and data logic.
-- Additional requirement: include Yearly Sales totals (new section) while keeping everything else identical.
+this is how i want the view details of creadit history
+--------------------creadit history--------------------
 
-Report Page UI (HTML structure + labels)
-- Page container id: monthly, class: page
-- Card title: “Monthly Delivery Report”
-- Content container: div id monthlyContent with margin-top: 16px
-- This page is opened by bottom-nav item “Monthly” which calls showPage('monthly')
-
-Report Data Source (IndexedDB)
-- Use same history store records from MimiProDB
-- Record fields used:
-	- date (ISO string)
-	- name (Customer, Date)
-	- sales
-	- net
-- No new storage required for monthly report; compute on the fly
-
-Monthly Report Rendering (JS) — must match existing output
-- Function name: renderMonthlyReport()
-- Load history = getAllFromStore('history')
-- Group by monthKey = “YYYY-MM” from record date
-- monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-- For each month group store:
-	- monthName
-	- date (Date object for sorting/reference)
-	- deliveries: [historyRecords]
-	- totalSales: sum of parseFloat(h.sales) || 0
-- Sort months descending by key (b.localeCompare(a))
-
-Monthly UI Layout (exact structure)
-- If no records: show centered gray message “No delivery records found”
-- Else for each month, create:
-	<div class="month-section">
-		<div class="month-header" onclick="toggleMonth(this)">
-			<span>{MonthName} ({deliveryCount} deliveries)</span>
-			<span class="month-toggle">▼ or ▲</span>
-		</div>
-		<div class="month-content {collapsed}">
-			<div style="overflow-x: auto;">
-				<table style="width: 100%; font-size: 13px;">
-					<thead>
-						<tr>
-							<th>Customer & Date</th>
-							<th>Sales (৳)</th>
-							<th>Net (৳)</th>
-							<th>View</th>
-						</tr>
-					</thead>
-					<tbody>
-						rows with customer+date, sales, net, View button
-					</tbody>
-				</table>
-			</div>
-			<div class="month-summary">Monthly Sales: ৳{rounded total}</div>
-		</div>
-	</div>
-
-- Current month expanded by default; other months collapsed
-- Collapsed state uses class "collapsed" and toggle icon ▼, expanded uses ▲
-- View button calls viewCalculation(historyIdx)
-
-Toggle Behavior
-- toggleMonth(element): toggles the next sibling .month-content collapsed class and flips the icon
-
-Required CSS (reuse existing)
-- .month-section, .month-header, .month-toggle, .month-content, .month-content.collapsed, .month-summary
-- Keep exact spacing, colors, font sizes from original app
-
-NEW: Yearly Sales (additional requirement)
-- Add a yearly summary section above monthly sections (same page, inside monthlyContent).
-- Group history by year (YYYY from date) and sum sales.
-- Sort years descending.
-- Display yearly totals in a compact table or list with label “Yearly Sales” and rows:
-	Year | Total Sales (৳)
-- Use rounded values (Math.round)
-- Keep styling consistent with existing card/table styles (no new theme)
-- Do not change existing monthly UI; yearly summary is an added block before the month sections.
-
-Important: Exactness
-- Keep all existing monthly labels, column order, buttons, and formatting identical.
-- Only addition is the Yearly Sales summary; everything else must remain unchanged.
+AND MAKE THE creadit CARD LIST DESIGN OR UI COMPACT, ANDMODERN 

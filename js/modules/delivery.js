@@ -736,7 +736,13 @@ const DeliveryModule = {
 				await DB.update('history', { ...payload, id: this.editingRecord.id });
 				this.showMessage('Calculation Updated Successfully!', 'success');
 			} else {
-				await DB.add('history', payload);
+				const historyId = await DB.add('history', payload);
+				await this.addCreditsFromDelivery({
+					historyId,
+					date: payload.date,
+					customerFallback: customerName,
+					creditRows: credit
+				});
 				this.showMessage('Calculation Saved Successfully!', 'success');
 			}
 
@@ -745,6 +751,32 @@ const DeliveryModule = {
 		} catch (error) {
 			console.error('Save failed:', error);
 			this.showMessage('Failed to save calculation', 'error');
+		}
+	},
+
+	async addCreditsFromDelivery({ historyId, date, customerFallback, creditRows }) {
+		if (!Array.isArray(creditRows) || creditRows.length === 0) return;
+		const creditDate = date || new Date().toISOString();
+		const entries = creditRows
+			.filter(row => (parseFloat(row.amount) || 0) > 0)
+			.map(row => ({
+				customer_name: row.name || customerFallback || 'Unknown',
+				customer_phone: '',
+				initial_amount: parseFloat(row.amount) || 0,
+				balance: parseFloat(row.amount) || 0,
+				credit_date: creditDate,
+				notes: `From Delivery #${historyId}`,
+				payment_history: []
+			}));
+
+		if (!entries.length) return;
+
+		for (const entry of entries) {
+			try {
+				await DB.add('credits', entry);
+			} catch (error) {
+				console.error('Failed to create credit entry:', error);
+			}
 		}
 	},
 

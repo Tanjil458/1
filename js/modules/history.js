@@ -247,6 +247,8 @@ const HistoryModule = {
 		const record = this.history[index];
 		if (!record) return;
 
+		this.ensureViewModal();
+
 		const customerName = (record.name || '').split(', ')[0] || '';
 		const dateText = new Date(record.date).toLocaleDateString();
 
@@ -300,6 +302,28 @@ const HistoryModule = {
 			`
 			: `<p style="text-align:center; color:#6c757d;">No expenses</p>`;
 
+		const creditRows = (record.credit || []);
+		const creditTable = creditRows.length
+			? `
+				<table class="print-table">
+					<thead>
+						<tr>
+							<th>Customer</th>
+							<th class="col-num">Amount (৳)</th>
+						</tr>
+					</thead>
+					<tbody>
+						${creditRows.map(cr => `
+							<tr>
+								<td>${cr.name || ''}</td>
+								<td class="col-num col-total">${cr.amount ?? ''}</td>
+							</tr>
+						`).join('')}
+					</tbody>
+				</table>
+			`
+			: `<p style="text-align:center; color:#6c757d;">No credit</p>`;
+
 		const salesTotal = Math.round(parseFloat(record.sales || '0'));
 		const cashTotal = Math.round(parseFloat(record.cash || '0'));
 		const expenseTotal = Math.round(parseFloat(record.totalExpense || '0'));
@@ -314,6 +338,7 @@ const HistoryModule = {
 				<div class="print-header">
 					<h2>Calculation Details</h2>
 					<p>Customer & Date: ${customerName}, ${dateText}</p>
+					<div class="print-divider"></div>
 				</div>
 
 				<h3>Products & Sales</h3>
@@ -345,7 +370,7 @@ const HistoryModule = {
 					</tbody>
 				</table>
 
-				<div class="print-three-column">
+				<div class="view-grid print-three-column">
 					<div class="print-section-third">
 						<h3>Cash Denominations</h3>
 						<table class="print-table">
@@ -366,24 +391,28 @@ const HistoryModule = {
 						${expensesTable}
 					</div>
 					<div class="print-section-third">
+						<h3>Credit (Unpaid)</h3>
+						${creditTable}
+					</div>
+					<div class="print-section-third">
 						<h3>Summary</h3>
 						<table class="print-summary-table">
 							<tbody>
 								<tr>
 									<td>Sales Total</td>
-									<td class="col-total">${salesTotal}</td>
+									<td class="col-total">৳${salesTotal}</td>
 								</tr>
 								<tr>
 									<td>Cash Received</td>
-									<td class="col-total">${cashTotal}</td>
+									<td class="col-total">৳${cashTotal}</td>
 								</tr>
 								<tr>
 									<td>Total Expenses</td>
-									<td class="col-total">${expenseTotal}</td>
+									<td class="col-total">৳${expenseTotal}</td>
 								</tr>
 								<tr>
 									<td><strong>NET TOTAL</strong></td>
-									<td class="col-total"><strong>${netTotal}</strong></td>
+									<td class="col-total"><strong>৳${netTotal}</strong></td>
 								</tr>
 							</tbody>
 						</table>
@@ -393,6 +422,29 @@ const HistoryModule = {
 		`;
 
 		viewModal.classList.add('show');
+	},
+
+	ensureViewModal() {
+		if (document.getElementById('viewModal')) return;
+
+		const modal = document.createElement('div');
+		modal.className = 'modal';
+		modal.id = 'viewModal';
+		modal.innerHTML = `
+			<div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+				<div id="viewContent"></div>
+				<div class="modal-actions">
+					<button class="btn btn-primary" id="printBtn">🖨️ Print</button>
+					<button class="btn btn-secondary" id="closeViewBtn">Close</button>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(modal);
+
+		const printBtn = modal.querySelector('#printBtn');
+		const closeViewBtn = modal.querySelector('#closeViewBtn');
+		if (printBtn) printBtn.addEventListener('click', () => this.printDocument());
+		if (closeViewBtn) closeViewBtn.addEventListener('click', () => this.closeViewModal());
 	},
 
 	closeViewModal() {
