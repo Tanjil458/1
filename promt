@@ -1,38 +1,85 @@
-Delivery Page — Add Credit Popup Enhancement (Detailed)
+PROMPT FOR AGENT: Replicate Report (Monthly) Page A–Z + add Yearly Sales
 
-Goal:
-Enhance the “Add Credit” popup on the Delivery page by introducing an Area selector and a customer name input with a filtered customer dropdown.
+Goal
+- Rebuild the Report page exactly as in the source app (Monthly Delivery Report), including UI, behavior, and data logic.
+- Additional requirement: include Yearly Sales totals (new section) while keeping everything else identical.
 
-Requirements:
-1) Add Area field (first in the popup)
-   - Label: “Area”
-   - Control: <select>
-   - Options: Loaded from saved Area Listing data.
-   - Must load dynamically from the same storage used by Area Listing.
+Report Page UI (HTML structure + labels)
+- Page container id: monthly, class: page
+- Card title: “Monthly Delivery Report”
+- Content container: div id monthlyContent with margin-top: 16px
+- This page is opened by bottom-nav item “Monthly” which calls showPage('monthly')
 
-2) Customer Name field (after Area)
-   - Label: “Customer Name”
-   - Control: text input, user can type freely.
-   - As the user types, show a dropdown list of customer names.
+Report Data Source (IndexedDB)
+- Use same history store records from MimiProDB
+- Record fields used:
+	- date (ISO string)
+	- name (Customer, Date)
+	- sales
+	- net
+- No new storage required for monthly report; compute on the fly
 
-3) Filtered Customer Dropdown
-   - Source: Customer Listing data.
-   - Filter: Only customers whose “Area” matches the selected Area.
-   - If no area is selected, show no results or a “Select Area first” hint.
-   - Selecting a customer from the dropdown fills the Customer Name input.
+Monthly Report Rendering (JS) — must match existing output
+- Function name: renderMonthlyReport()
+- Load history = getAllFromStore('history')
+- Group by monthKey = “YYYY-MM” from record date
+- monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+- For each month group store:
+	- monthName
+	- date (Date object for sorting/reference)
+	- deliveries: [historyRecords]
+	- totalSales: sum of parseFloat(h.sales) || 0
+- Sort months descending by key (b.localeCompare(a))
 
-4) Behavior
-   - Changing the Area resets the Customer Name input and dropdown list.
-   - Preserve existing credit popup styling and validation patterns.
-   - Do not break existing credit calculations or save flow.
+Monthly UI Layout (exact structure)
+- If no records: show centered gray message “No delivery records found”
+- Else for each month, create:
+	<div class="month-section">
+		<div class="month-header" onclick="toggleMonth(this)">
+			<span>{MonthName} ({deliveryCount} deliveries)</span>
+			<span class="month-toggle">▼ or ▲</span>
+		</div>
+		<div class="month-content {collapsed}">
+			<div style="overflow-x: auto;">
+				<table style="width: 100%; font-size: 13px;">
+					<thead>
+						<tr>
+							<th>Customer & Date</th>
+							<th>Sales (৳)</th>
+							<th>Net (৳)</th>
+							<th>View</th>
+						</tr>
+					</thead>
+					<tbody>
+						rows with customer+date, sales, net, View button
+					</tbody>
+				</table>
+			</div>
+			<div class="month-summary">Monthly Sales: ৳{rounded total}</div>
+		</div>
+	</div>
 
-Implementation notes:
-- Follow existing modal/component patterns in delivery.js.
-- Keep storage API consistent with existing listing pages.
-- Use the same DOM structure/classes used for other popup inputs for visual consistency.
+- Current month expanded by default; other months collapsed
+- Collapsed state uses class "collapsed" and toggle icon ▼, expanded uses ▲
+- View button calls viewCalculation(historyIdx)
 
-Acceptance:
-- Area appears at the top.
-- Customer dropdown only shows customers in the chosen area.
-- Selected customer fills the name input.
-- Save works normally and stores the customer name as before.
+Toggle Behavior
+- toggleMonth(element): toggles the next sibling .month-content collapsed class and flips the icon
+
+Required CSS (reuse existing)
+- .month-section, .month-header, .month-toggle, .month-content, .month-content.collapsed, .month-summary
+- Keep exact spacing, colors, font sizes from original app
+
+NEW: Yearly Sales (additional requirement)
+- Add a yearly summary section above monthly sections (same page, inside monthlyContent).
+- Group history by year (YYYY from date) and sum sales.
+- Sort years descending.
+- Display yearly totals in a compact table or list with label “Yearly Sales” and rows:
+	Year | Total Sales (৳)
+- Use rounded values (Math.round)
+- Keep styling consistent with existing card/table styles (no new theme)
+- Do not change existing monthly UI; yearly summary is an added block before the month sections.
+
+Important: Exactness
+- Keep all existing monthly labels, column order, buttons, and formatting identical.
+- Only addition is the Yearly Sales summary; everything else must remain unchanged.

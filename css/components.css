@@ -95,10 +95,22 @@
 
 /* Filters */
 .filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 16px;
+}
+
+.filters .filter-group {
+    min-width: 120px;
+    flex: 1 1 120px;
+}
+
+.filters .filter-group label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 6px;
 }
 
 /* Summary Box */
@@ -251,6 +263,120 @@
 
 .dropdown-item:hover {
     background: var(--bg);
+}
+
+/* Print Document Styles */
+.print-document {
+    font-size: 12px;
+    color: #111827;
+}
+
+.print-header h2 {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.print-header p {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.print-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 11px;
+    margin-bottom: 12px;
+}
+
+.print-table th,
+.print-table td {
+    border: 1px solid #e5e7eb;
+    padding: 6px 6px;
+    vertical-align: top;
+}
+
+.print-table th {
+    background: #f3f4f6;
+    font-weight: 600;
+    text-align: left;
+}
+
+.print-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.print-summary-table td {
+    padding: 6px 6px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.print-three-column {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.print-section-third h3 {
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.print-document .col-product {
+    text-align: center;
+    word-break: break-word;
+}
+
+.print-document .col-num {
+    text-align: right;
+}
+
+.print-document .col-total {
+    font-weight: 700;
+}
+
+@media print {
+    body {
+        background: #fff;
+    }
+
+    .top-header,
+    .bottom-nav,
+    .side-nav,
+    .side-nav-overlay,
+    .btn,
+    button,
+    input,
+    select,
+    textarea,
+    .page,
+    .modal {
+        display: none !important;
+    }
+
+    #history {
+        display: block !important;
+    }
+
+    #viewModal {
+        display: flex !important;
+        position: static;
+        background: transparent;
+    }
+
+    #viewModal .modal-content {
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+        max-height: none;
+        padding: 0;
+    }
+
+    .modal-actions {
+        display: none !important;
+    }
 }
 
 /* Tabs */
