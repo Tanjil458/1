@@ -143,7 +143,7 @@ const HistoryModule = {
 
 		this.history.forEach((record, index) => {
 			const dateObj = new Date(record.date);
-			const dateKey = dateObj.toISOString().slice(0, 10);
+			const dateKey = this.toLocalDateKey(dateObj);
 			const year = dateKey.slice(0, 4);
 			const month = dateKey.slice(5, 7);
 
@@ -154,7 +154,7 @@ const HistoryModule = {
 			if (!dailyData[dateKey]) {
 				dailyData[dateKey] = {
 					date: dateObj,
-					dateFormatted: dateObj.toLocaleDateString(),
+					dateFormatted: this.formatDate(dateObj),
 					records: []
 				};
 			}
@@ -243,6 +243,20 @@ const HistoryModule = {
 		this.renderHistory();
 	},
 
+	toLocalDateKey(dateObj) {
+		const yyyy = dateObj.getFullYear();
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		return `${yyyy}-${mm}-${dd}`;
+	},
+
+	formatDate(dateObj) {
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const yyyy = dateObj.getFullYear();
+		return `${dd}/${mm}/${yyyy}`;
+	},
+
 	viewCalculation(index) {
 		const record = this.history[index];
 		if (!record) return;
@@ -250,7 +264,7 @@ const HistoryModule = {
 		this.ensureViewModal();
 
 		const customerName = (record.name || '').split(', ')[0] || '';
-		const dateText = new Date(record.date).toLocaleDateString();
+		const dateText = this.formatDate(new Date(record.date));
 
 		const calculationRows = (record.calculation || []).map(item => `
 			<tr>

@@ -467,7 +467,7 @@ const CreditsModule = {
 		if (!modal || !content) return;
 
 		const customerInfo = this.getCustomerInfo(credit);
-		const creditDate = credit.credit_date ? new Date(credit.credit_date).toLocaleDateString() : '—';
+		const creditDate = credit.credit_date ? this.formatDate(new Date(credit.credit_date)) : '—';
 		const areaLabel = customerInfo.area;
 		const initialAmount = parseFloat(credit.initial_amount) || 0;
 		const balanceAmount = parseFloat(credit.balance) || 0;
@@ -644,6 +644,13 @@ const CreditsModule = {
 		return Math.round(number).toLocaleString();
 	},
 
+	formatDate(dateObj) {
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const yyyy = dateObj.getFullYear();
+		return `${dd}/${mm}/${yyyy}`;
+	},
+
 	buildCustomerMap(customers) {
 		const map = {};
 		(customers || []).forEach(customer => {
@@ -667,7 +674,7 @@ const CreditsModule = {
 		if (!history.length) return '—';
 		const last = history[history.length - 1];
 		if (!last?.date) return '—';
-		return new Date(last.date).toLocaleDateString();
+		return this.formatDate(new Date(last.date));
 	},
 
 	renderPaymentHistory(credit) {
@@ -678,7 +685,7 @@ const CreditsModule = {
 		return `
 			<div class="detail-history-list">
 				${history.map(entry => {
-					const dateText = entry.date ? new Date(entry.date).toLocaleDateString() : '—';
+					const dateText = entry.date ? this.formatDate(new Date(entry.date)) : '—';
 					const amountText = this.formatCurrency(entry.amount);
 					return `
 						<div class="detail-history-row">
