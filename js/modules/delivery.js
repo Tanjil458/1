@@ -146,6 +146,19 @@ const DeliveryModule = {
 					</div>
 				</div>
 			</div>
+
+			<!-- Delete Confirmation Popup -->
+			<div class="delete-confirm-overlay" id="deleteConfirmPopup">
+				<div class="delete-confirm-box" role="dialog" aria-modal="true">
+					<div class="delete-confirm-icon">⚠️</div>
+					<div class="delete-confirm-title">Delete this item?</div>
+					<div class="delete-confirm-text">This action cannot be undone. Are you sure you want to delete this item?</div>
+					<div class="delete-confirm-actions">
+						<button class="delete-confirm-btn cancel" id="deleteConfirmCancel">Cancel</button>
+						<button class="delete-confirm-btn delete" id="deleteConfirmOk">Delete</button>
+					</div>
+				</div>
+			</div>
 			</section>
 		`;
 
@@ -186,6 +199,16 @@ const DeliveryModule = {
 		const customerSaveBtn = document.getElementById('customerSaveBtn');
 		if (customerSaveBtn) {
 			customerSaveBtn.addEventListener('click', () => this.submitCustomerModal());
+		}
+
+		const deleteCancelBtn = document.getElementById('deleteConfirmCancel');
+		if (deleteCancelBtn) {
+			deleteCancelBtn.addEventListener('click', () => this.closeDeleteConfirm());
+		}
+
+		const deleteOkBtn = document.getElementById('deleteConfirmOk');
+		if (deleteOkBtn) {
+			deleteOkBtn.addEventListener('click', () => this.confirmDeleteAction());
 		}
 	},
 
@@ -590,23 +613,44 @@ const DeliveryModule = {
 			const threshold = -80;
 			if (currentX < threshold) {
 				row.style.transform = 'translateX(-40px)';
-				this.confirmDelete(() => {
-					onDelete();
-				}, () => {
-					row.style.transform = 'translateX(0px)';
+				this.showDeleteConfirm(() => {
+					row.style.transform = 'translateX(-120px)';
+					setTimeout(() => onDelete(), 300);
 				});
+				this.pendingReset = () => {
+					row.style.transform = 'translateX(0px)';
+				};
 			} else {
 				row.style.transform = 'translateX(0px)';
 			}
 		});
 	},
 
-	confirmDelete(onConfirm, onCancel) {
-		if (confirm('Are you sure you want to delete?')) {
-			onConfirm();
-		} else if (onCancel) {
-			onCancel();
+	showDeleteConfirm(callback) {
+		this.pendingDeleteCallback = callback;
+		const modal = document.getElementById('deleteConfirmPopup');
+		if (modal) {
+			modal.classList.add('show');
 		}
+	},
+
+	closeDeleteConfirm() {
+		const modal = document.getElementById('deleteConfirmPopup');
+		if (modal) {
+			modal.classList.remove('show');
+		}
+		if (this.pendingReset) {
+			this.pendingReset();
+		}
+		this.pendingDeleteCallback = null;
+		this.pendingReset = null;
+	},
+
+	confirmDeleteAction() {
+		if (this.pendingDeleteCallback) {
+			this.pendingDeleteCallback();
+		}
+		this.closeDeleteConfirm();
 	},
 
 	getProductByName(name) {
