@@ -385,6 +385,51 @@
     display: none;
 }
 
+/* Cash Denominations (Compact, Classic) */
+#cashTable {
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+#cashTable th {
+    background: #f3f4f6;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 6px 4px;
+}
+
+#cashTable td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+#cashTable tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+#cashTable td:first-child {
+    font-weight: 600;
+    color: #111827;
+}
+
+#cashTable td:last-child {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #111827;
+}
+
+#cashTable input[type="number"] {
+    height: 26px;
+    font-size: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+}
+
+#cashTable input[type="number"]:focus {
+    border-color: #6b7280;
+}
+
 .btn-block {
     width: 100%;
     display: block;

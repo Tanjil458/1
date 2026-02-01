@@ -1,0 +1,98 @@
+DETAILED AGENT PROMPT — Cash Denominations Design (Professional, Classic, Compact)
+
+Goal
+Make the Cash Denominations card look more professional, classic, and compact. Only the design should change. All IDs, layout structure, and calculations must remain identical. No JS logic changes.
+
+Scope
+- Card title: “Cash Denominations”
+- Table ID: cashTable
+- Rows: Note, Qty, Total
+- Summary line: “Cash: ৳ <value>”
+
+Constraints (Must Not Change)
+- Do NOT change table structure or columns.
+- Do NOT change column widths unless visually required for compactness (keep same overall width).
+- Do NOT change any calculations or JS logic.
+- Do NOT remove any rows or denominations.
+- Keep same IDs and DOM structure.
+
+Design Direction
+Professional, classic, compact:
+- Subtle borders, minimal spacing, small typography.
+- Slightly muted background for header row.
+- Clear alignment: Note left/center, Qty & Total right aligned.
+- Compact row height and input height.
+- Use neutral grays and thin borders.
+
+Exact Design Requirements
+1) Card look
+- Keep card padding but reduce table row height.
+- Use classic table look: thin borders, no heavy shadows.
+
+2) Table Header
+- Background: #f3f4f6 (light gray)
+- Text color: #374151
+- Font size: 11px (keep consistent)
+- Border bottom: 1px solid #e5e7eb
+
+3) Table Body
+- Row height compact: padding 6px 4px
+- Border bottom: 1px solid #eef2f7
+- Alternate subtle row background (optional): #fafafa
+
+4) Inputs (Qty)
+- Height: 26px
+- Font size: 11px
+- Border: 1px solid #d1d5db
+- Radius: 6px (classic)
+- Background: #fff
+- Focus: border-color #6b7280
+
+5) Readonly “Total” column
+- Use light gray background #f9fafb
+- Font weight: 600
+- Text color: #111827
+
+6) Note column
+- Font weight: 600
+- Color: #111827
+- Align center or left (match existing alignment style).
+
+7) Summary line
+- Keep right aligned.
+- Slightly bolder: font-weight 600.
+
+CSS Changes (Additions Only; Scoped)
+Apply styles scoped to the Cash Denominations card:
+
+- #cashTable { border-collapse: collapse; font-size: 11px; }
+- #cashTable th {
+		background: #f3f4f6;
+		color: #374151;
+		border-bottom: 1px solid #e5e7eb;
+		padding: 6px 4px;
+	}
+- #cashTable td {
+		padding: 6px 4px;
+		border-bottom: 1px solid #eef2f7;
+	}
+- #cashTable tbody tr:nth-child(even) { background: #fafafa; }
+- #cashTable td:first-child { font-weight: 600; color: #111827; }
+- #cashTable td:last-child { background: #f9fafb; font-weight: 600; color: #111827; }
+- #cashTable input[type="number"] {
+		height: 26px;
+		font-size: 11px;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		background: #fff;
+	}
+- #cashTable input[type="number"]:focus {
+		border-color: #6b7280;
+	}
+
+Acceptance Criteria
+- Cash Denominations table looks compact and professional.
+- Only visual design changes; calculations and behavior remain identical.
+- No changes to table structure or IDs.
+
+End of Prompt
