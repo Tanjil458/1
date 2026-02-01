@@ -1,50 +1,66 @@
-DETAILED AGENT PROMPT — Hide Dropdown Arrow After Selection (More Text Visible)
+DETAILED AGENT PROMPT — Fix Empty/White Area After Hiding Select Arrow
+
+Problem Summary
+After hiding the dropdown arrow on the product <select>, a blank/white area appears, and the product text does not expand to use the freed space. We need to keep the arrow hidden but allow the product name to occupy the full width.
 
 Goal
-After a product is selected, hide or minimize the native dropdown arrow so more of the product name is visible, without changing any other behavior, layout, or calculations. The selection must remain editable (user can still open the dropdown to change).
+Remove the blank area and make the product name text visible across the full width of the Product column, without changing table layout, widths, or any other behavior.
 
-Constraints (Must Not Change)
-- Do NOT change table column widths or layout.
-- Do NOT replace the <select> with a different control.
-- Do NOT break accessibility or keyboard navigation.
-- Do NOT alter calculation logic or any other UI.
+Constraints
+- Do NOT change column widths or table structure.
+- Do NOT replace the <select> element.
+- Do NOT alter calculations, data, or any other UI.
 
-Preferred Approach (CSS-only, safe)
-Use a class on the select once it has a value, and hide the native arrow while keeping the control functional.
+Root Cause (Common)
+Most browsers reserve space for the dropdown arrow using internal padding or background. When appearance is removed, the padding or background may still remain, leaving an empty area.
+
+Fix Strategy (Minimal, Safe)
+1) Remove arrow styling AND remove extra padding reserved for the arrow.
+2) Ensure the select text fills the available width.
+3) Keep the select background consistent with inputs.
 
 Implementation Steps
-1) On product selection change:
-	- If a valid product is selected, add a class: .selected
-	- If empty/unselected, remove the class.
+1) Add a CSS class to product selects AFTER selection:
+	 - class: .selected (already used to hide arrow)
 
-2) CSS to hide the arrow (cross‑browser best effort):
-	- For modern browsers: appearance: none; background-image: none;
-	- For IE/Edge legacy: select::-ms-expand { display: none; }
-	- Keep padding-right minimal so text has more space.
+2) Apply the following CSS for product selects ONLY:
+	 - Remove native appearance.
+	 - Reset background image.
+	 - Reset padding-right to a small value so text expands.
+	 - Force text to occupy full width and align left or center as desired.
 
-3) Maintain click behavior:
-	- Do NOT set pointer-events: none.
-	- Keep the select focusable.
-
-Example CSS (scope to Product column only)
+Exact CSS (Scope to Product Column Only)
 - #invTable td:first-child select.selected {
-	 appearance: none;
-	 -webkit-appearance: none;
-	 -moz-appearance: none;
-	 background-image: none;
-	 padding-right: 4px; /* reduce reserved space */
-  }
+		appearance: none;
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		background-image: none !important;
+		background-color: #fff; /* match input bg */
+		padding-right: 6px; /* remove reserved arrow space */
+		text-indent: 0; /* remove hidden offset */
+		overflow: visible; /* allow full text */
+	}
 - #invTable td:first-child select.selected::-ms-expand { display: none; }
 
-Example JS Hook
-- On selection change:
-  if (this.value) this.classList.add('selected');
-  else this.classList.remove('selected');
+Optional (If still truncated)
+- #invTable td:first-child select {
+		width: 100%;
+		white-space: nowrap; /* or normal if you allow wrap */
+		text-overflow: ellipsis; /* if keeping single line */
+	}
+
+If you want full text without ellipsis:
+- Use white-space: normal and word-break: break-word (only on product column).
+
+JS Hook (If not already present)
+On change event for the product <select>:
+- if (this.value) this.classList.add('selected');
+- else this.classList.remove('selected');
 
 Acceptance Criteria
-- After a product is selected, the dropdown arrow is hidden or minimized.
-- More product name text is visible within the same column width.
-- Dropdown still opens and works on click/tap.
-- No changes to other columns, layouts, or calculations.
+- No blank/white area after arrow is hidden.
+- Product text uses full width of the column.
+- Dropdown still opens and works normally.
+- No layout changes to other columns.
 
 End of Prompt

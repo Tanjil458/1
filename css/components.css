@@ -360,14 +360,25 @@
 
 #invTable td:first-child select {
     font-weight: 600;
+    width: 100%;
+    display: block;
 }
 
 #invTable td:first-child select.selected {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-image: none;
-    padding-right: 4px;
+    background-image: none !important;
+    background: transparent;
+    background-color: #fff;
+    padding-right: 0 !important;
+    padding-left: 4px;
+    text-indent: 0;
+    overflow: visible;
+    text-align: left;
+    background-repeat: no-repeat;
+    background-size: 0 0;
+    background-position: right center;
 }
 
 #invTable td:first-child select.selected::-ms-expand {

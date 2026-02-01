@@ -242,7 +242,7 @@ const DeliveryModule = {
 		}
 		productSelect.classList.toggle('selected', !!productSelect.value);
 
-		productSelect.addEventListener('change', () => {
+		const handleProductChange = () => {
 			productSelect.title = productSelect.value || '';
 			productSelect.classList.toggle('selected', !!productSelect.value);
 			const product = this.getProductByName(productSelect.value);
@@ -253,7 +253,10 @@ const DeliveryModule = {
 				}
 			}
 			this.recalculate();
-		});
+		};
+
+		productSelect.addEventListener('change', handleProductChange);
+		productSelect.addEventListener('input', handleProductChange);
 
 		row.querySelectorAll('input').forEach(input => {
 			input.addEventListener('input', () => this.recalculate());
