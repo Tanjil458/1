@@ -1,0 +1,643 @@
+/**
+ * Delivery Calculation Module
+ */
+
+const DeliveryModule = {
+	products: [],
+	editingRecord: null,
+	cashNotes: [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1],
+
+	async init() {
+		this.render();
+		await this.loadProducts();
+		this.addProductRow();
+	},
+
+	render() {
+		const content = document.getElementById('pageContent');
+		if (!content) return;
+
+		content.innerHTML = `
+			<section class="page active" id="inventory">
+			<div class="card">
+				<div class="delivery-header">
+					<h3>Delivery Calculation</h3>
+				</div>
+				<div style="overflow-x:auto;">
+					<table class="table delivery-table" id="invTable">
+						<thead>
+							<tr>
+								<th class="col-product">Product</th>
+								<th class="col-dc col-green">DC</th>
+								<th class="col-dp col-green">DP</th>
+								<th class="col-rc col-red">RC</th>
+								<th class="col-rp col-red">RP</th>
+								<th class="col-sold">Sold</th>
+								<th class="col-price">Price</th>
+								<th class="col-total">Total</th>
+							</tr>
+						</thead>
+						<tbody id="invTableBody"></tbody>
+					</table>
+				</div>
+				<button class="btn btn-primary btn-block" id="addProductBtn">+ Add Product</button>
+				<div class="sales-row">Sales: ৳ <span id="salesTotal">0</span></div>
+			</div>
+
+			<div class="card">
+				<div class="delivery-header">
+					<h3>Cash Denominations</h3>
+					<div class="total-pill">Cash: ৳ <span id="cashTotal">0</span></div>
+				</div>
+				<div style="overflow-x:auto;">
+					<table class="table" id="cashTable">
+						<thead>
+							<tr>
+								<th>Note</th>
+								<th>Qty</th>
+								<th>Total</th>
+							</tr>
+						</thead>
+						<tbody id="cashTableBody"></tbody>
+					</table>
+				</div>
+			</div>
+
+			<div class="card">
+				<div class="delivery-header">
+					<h3>Extra Expenses</h3>
+					<div class="total-pill">Total: ৳ <span id="expenseTotal">0</span></div>
+				</div>
+				<div style="overflow-x:auto;">
+					<table class="table" id="expenseTable">
+						<thead>
+							<tr>
+								<th>Expense Name</th>
+								<th>Amount</th>
+							</tr>
+						</thead>
+						<tbody id="expenseTableBody"></tbody>
+					</table>
+				</div>
+				<button class="btn btn-secondary btn-block" id="addExpenseBtn">+ Add Expense</button>
+			</div>
+
+			<div class="card">
+				<h3>Summary</h3>
+				<div class="summary-box">
+					<div class="summary-row">
+						<span>Sales Total</span>
+						<strong>৳ <span id="summarySales">0</span></strong>
+					</div>
+					<div class="summary-row">
+						<span>Cash Total</span>
+						<strong>৳ <span id="summaryCash">0</span></strong>
+					</div>
+					<div class="summary-row">
+						<span>Total Expenses</span>
+						<strong>৳ <span id="summaryExpense">0</span></strong>
+					</div>
+					<div class="summary-row summary-row-total">
+						<span>Net Total</span>
+						<strong>৳ <span id="summaryNet">0</span></strong>
+					</div>
+				</div>
+				<button class="btn btn-success btn-block" id="saveCalculationBtn">Save Calculation</button>
+			</div>
+
+			<div class="modal" id="expenseModal">
+				<div class="modal-content">
+					<div class="modal-header">
+						<div class="modal-title">Add Expense</div>
+						<button class="modal-close" data-close-expense>×</button>
+					</div>
+					<div class="modal-body">
+						<div class="form-group">
+							<label class="form-label">Expense Name</label>
+							<input type="text" id="expenseNameInput" class="form-input" placeholder="Name" />
+						</div>
+						<div class="form-group">
+							<label class="form-label">Amount</label>
+							<input type="number" id="expenseAmountInput" class="form-input" min="0" step="0.01" value="0" />
+						</div>
+					</div>
+					<div class="modal-actions">
+						<button class="btn btn-secondary" data-close-expense>Cancel</button>
+						<button class="btn btn-primary" id="expenseSaveBtn">Save</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="customerModal">
+				<div class="modal-content">
+					<div class="modal-header">
+						<div class="modal-title">Customer Name</div>
+						<button class="modal-close" data-close-customer>×</button>
+					</div>
+					<div class="modal-body">
+						<div class="form-group">
+							<label class="form-label">Customer</label>
+							<input type="text" id="customerNameInput" class="form-input" placeholder="Enter name" />
+						</div>
+					</div>
+					<div class="modal-actions">
+						<button class="btn btn-secondary" data-close-customer>Cancel</button>
+						<button class="btn btn-primary" id="customerSaveBtn">Save</button>
+					</div>
+				</div>
+			</div>
+			</section>
+		`;
+
+		this.renderCashTable();
+		this.bindEvents();
+		this.recalculate();
+	},
+
+	bindEvents() {
+		const addProductBtn = document.getElementById('addProductBtn');
+		if (addProductBtn) {
+			addProductBtn.addEventListener('click', () => this.addProductRow());
+		}
+
+		const addExpenseBtn = document.getElementById('addExpenseBtn');
+		if (addExpenseBtn) {
+			addExpenseBtn.addEventListener('click', () => this.openExpenseModal());
+		}
+
+		const expenseSaveBtn = document.getElementById('expenseSaveBtn');
+		if (expenseSaveBtn) {
+			expenseSaveBtn.addEventListener('click', () => this.saveExpense());
+		}
+
+		document.querySelectorAll('[data-close-expense]').forEach(btn => {
+			btn.addEventListener('click', () => this.closeExpenseModal());
+		});
+
+		const saveCalculationBtn = document.getElementById('saveCalculationBtn');
+		if (saveCalculationBtn) {
+			saveCalculationBtn.addEventListener('click', () => this.handleSave());
+		}
+
+		document.querySelectorAll('[data-close-customer]').forEach(btn => {
+			btn.addEventListener('click', () => this.closeCustomerModal());
+		});
+
+		const customerSaveBtn = document.getElementById('customerSaveBtn');
+		if (customerSaveBtn) {
+			customerSaveBtn.addEventListener('click', () => this.submitCustomerModal());
+		}
+	},
+
+	async loadProducts() {
+		try {
+			this.products = await DB.getAll('products');
+			this.refreshProductSelects();
+		} catch (error) {
+			console.error('Error loading products:', error);
+		}
+	},
+
+	refreshProductSelects() {
+		const selects = document.querySelectorAll('.product-select');
+		selects.forEach(select => {
+			const currentValue = select.value;
+			select.innerHTML = '<option value="">Select</option>';
+			this.products.forEach(product => {
+				const option = document.createElement('option');
+				option.value = product.name;
+				option.textContent = product.name;
+				select.appendChild(option);
+			});
+			select.value = currentValue;
+		});
+	},
+
+	addProductRow(data = {}) {
+		const tbody = document.getElementById('invTableBody');
+		if (!tbody) return;
+
+		const row = document.createElement('tr');
+		row.className = 'swipeable-row';
+		row.innerHTML = `
+			<td class="col-product"><select class="product-select"></select></td>
+			<td class="col-dc col-green"><input type="number" class="dc-input" min="0" value="${this.toNumberValue(data.dc)}" /></td>
+			<td class="col-dp col-green"><input type="number" class="dp-input" min="0" value="${this.toNumberValue(data.dp)}" /></td>
+			<td class="col-rc col-red"><input type="number" class="rc-input" min="0" value="${this.toNumberValue(data.rc)}" /></td>
+			<td class="col-rp col-red"><input type="number" class="rp-input" min="0" value="${this.toNumberValue(data.rp)}" /></td>
+			<td class="col-sold readonly"><input type="text" class="sold-input" value="0" readonly /></td>
+			<td class="col-price"><input type="number" class="price-input" min="0" step="0.01" value="${this.toNumberValue(data.price)}" /></td>
+			<td class="col-total readonly"><input type="text" class="total-input" value="0" readonly /></td>
+		`;
+
+		tbody.appendChild(row);
+		this.refreshProductSelects();
+
+		const productSelect = row.querySelector('.product-select');
+		if (data.product) {
+			productSelect.value = data.product;
+		}
+
+		productSelect.addEventListener('change', () => {
+			const product = this.getProductByName(productSelect.value);
+			if (product) {
+				const priceInput = row.querySelector('.price-input');
+				if (priceInput) {
+					priceInput.value = this.toNumberValue(product.price);
+				}
+			}
+			this.recalculate();
+		});
+
+		row.querySelectorAll('input').forEach(input => {
+			input.addEventListener('input', () => this.recalculate());
+		});
+
+		this.attachSwipeToRow(row, () => {
+			row.remove();
+			this.recalculate();
+		});
+
+		this.recalculate();
+	},
+
+	renderCashTable() {
+		const tbody = document.getElementById('cashTableBody');
+		if (!tbody) return;
+		tbody.innerHTML = '';
+
+		this.cashNotes.forEach(note => {
+			const row = document.createElement('tr');
+			row.dataset.note = note;
+			row.innerHTML = `
+				<td>${note}</td>
+				<td><input type="number" class="cash-qty" min="0" value="0" /></td>
+				<td class="cash-total">0</td>
+			`;
+			row.querySelector('.cash-qty').addEventListener('input', () => this.recalculate());
+			tbody.appendChild(row);
+		});
+	},
+
+	openExpenseModal() {
+		const modal = document.getElementById('expenseModal');
+		const nameInput = document.getElementById('expenseNameInput');
+		const amountInput = document.getElementById('expenseAmountInput');
+		if (nameInput) nameInput.value = '';
+		if (amountInput) amountInput.value = '0';
+		if (modal) modal.classList.add('show');
+	},
+
+	closeExpenseModal() {
+		const modal = document.getElementById('expenseModal');
+		if (modal) modal.classList.remove('show');
+	},
+
+	saveExpense() {
+		const nameInput = document.getElementById('expenseNameInput');
+		const amountInput = document.getElementById('expenseAmountInput');
+		const name = nameInput ? nameInput.value.trim() : '';
+		const amount = amountInput ? parseFloat(amountInput.value) : 0;
+
+		if (!name || !Number.isFinite(amount) || amount <= 0) {
+			this.showMessage('Please enter valid expense details', 'warning');
+			return;
+		}
+
+		this.addExpenseRow({ name, amount });
+		this.closeExpenseModal();
+		this.recalculate();
+	},
+
+	addExpenseRow(data = {}) {
+		const tbody = document.getElementById('expenseTableBody');
+		if (!tbody) return;
+
+		const row = document.createElement('tr');
+		row.className = 'swipeable-row';
+		row.innerHTML = `
+			<td>${data.name || ''}</td>
+			<td><input type="number" class="expense-amount" min="0" step="0.01" value="${this.toNumberValue(data.amount)}" /></td>
+		`;
+
+		row.querySelector('.expense-amount').addEventListener('input', () => this.recalculate());
+
+		this.attachSwipeToRow(row, () => {
+			row.remove();
+			this.recalculate();
+		});
+
+		tbody.appendChild(row);
+		this.recalculate();
+	},
+
+	recalculate() {
+		let salesTotal = 0;
+
+		document.querySelectorAll('#invTableBody tr').forEach(row => {
+			const productName = row.querySelector('.product-select')?.value || '';
+			const product = this.getProductByName(productName);
+			const pcs = product ? this.toNumberValue(product.pcs) : 0;
+
+			const dc = this.toNumberValue(row.querySelector('.dc-input')?.value);
+			const dp = this.toNumberValue(row.querySelector('.dp-input')?.value);
+			const rc = this.toNumberValue(row.querySelector('.rc-input')?.value);
+			const rp = this.toNumberValue(row.querySelector('.rp-input')?.value);
+
+			const delivery = (dc * pcs) + dp;
+			const returns = (rc * pcs) + rp;
+			const sold = Math.max(0, delivery - returns);
+
+			const priceInput = row.querySelector('.price-input');
+			const priceValueRaw = priceInput ? priceInput.value : '';
+			const price = this.parsePrice(priceValueRaw, product);
+
+			const rowTotalRaw = sold * price;
+			salesTotal += rowTotalRaw;
+
+			const soldInput = row.querySelector('.sold-input');
+			const totalInput = row.querySelector('.total-input');
+			if (soldInput) soldInput.value = Math.round(sold).toString();
+			if (totalInput) totalInput.value = Math.round(rowTotalRaw).toString();
+		});
+
+		let cashTotal = 0;
+		document.querySelectorAll('#cashTableBody tr').forEach(row => {
+			const note = parseFloat(row.dataset.note || '0');
+			const qty = this.toNumberValue(row.querySelector('.cash-qty')?.value);
+			const rowTotalRaw = note * qty;
+			cashTotal += rowTotalRaw;
+			const totalCell = row.querySelector('.cash-total');
+			if (totalCell) totalCell.textContent = Math.round(rowTotalRaw).toString();
+		});
+
+		let expenseTotal = 0;
+		document.querySelectorAll('#expenseTableBody .expense-amount').forEach(input => {
+			expenseTotal += this.toNumberValue(input.value);
+		});
+
+		const salesRounded = Math.round(salesTotal);
+		const cashRounded = Math.round(cashTotal);
+		const expenseRounded = Math.round(expenseTotal);
+		const netRounded = Math.round(salesTotal - cashTotal - expenseTotal);
+
+		this.updateText('salesTotal', salesRounded);
+		this.updateText('cashTotal', cashRounded);
+		this.updateText('expenseTotal', expenseRounded);
+		this.updateText('summarySales', salesRounded);
+		this.updateText('summaryCash', cashRounded);
+		this.updateText('summaryExpense', expenseRounded);
+		this.updateText('summaryNet', netRounded);
+	},
+
+	updateText(id, value) {
+		const el = document.getElementById(id);
+		if (el) el.textContent = value.toString();
+	},
+
+	async handleSave() {
+		const productRows = Array.from(document.querySelectorAll('#invTableBody tr'));
+		if (productRows.length === 0) {
+			this.showMessage('Please add products to calculate', 'warning');
+			return;
+		}
+
+		const hasProduct = productRows.some(row => (row.querySelector('.product-select')?.value || '') !== '');
+		if (!hasProduct) {
+			this.showMessage('Please select products', 'warning');
+			return;
+		}
+
+		const defaultName = this.editingRecord?.name?.split(',')[0]?.trim() || '';
+		const customerName = await this.promptCustomerName(defaultName);
+		if (!customerName) return;
+
+		const now = new Date();
+		const sales = document.getElementById('summarySales')?.textContent || '0';
+		const cash = document.getElementById('summaryCash')?.textContent || '0';
+		const totalExpense = document.getElementById('summaryExpense')?.textContent || '0';
+		const net = document.getElementById('summaryNet')?.textContent || '0';
+
+		const calculation = productRows.map(row => {
+			const product = row.querySelector('.product-select')?.value || '';
+			const dc = this.toNumberValue(row.querySelector('.dc-input')?.value);
+			const dp = this.toNumberValue(row.querySelector('.dp-input')?.value);
+			const rc = this.toNumberValue(row.querySelector('.rc-input')?.value);
+			const rp = this.toNumberValue(row.querySelector('.rp-input')?.value);
+			const sold = this.toNumberValue(row.querySelector('.sold-input')?.value);
+			const price = this.toNumberValue(row.querySelector('.price-input')?.value);
+			const total = this.toNumberValue(row.querySelector('.total-input')?.value);
+			return { product, dc, dp, rc, rp, sold, price, total };
+		});
+
+		const expenses = Array.from(document.querySelectorAll('#expenseTableBody tr')).map(row => {
+			const name = row.children[0]?.textContent || '';
+			const amount = this.toNumberValue(row.querySelector('.expense-amount')?.value);
+			return { name, amount };
+		});
+
+		const cashDetail = Array.from(document.querySelectorAll('#cashTableBody tr')).map(row => {
+			const note = parseFloat(row.dataset.note || '0');
+			const qty = this.toNumberValue(row.querySelector('.cash-qty')?.value);
+			const total = this.toNumberValue(row.querySelector('.cash-total')?.textContent);
+			return { note, qty, total };
+		});
+
+		const payload = {
+			name: `${customerName}, ${now.toLocaleDateString()}`,
+			date: now.toISOString(),
+			sales: sales.toString(),
+			cash: cash.toString(),
+			totalExpense: totalExpense.toString(),
+			net: net.toString(),
+			calculation,
+			expenses,
+			cashDetail
+		};
+
+		try {
+			if (this.editingRecord?.id) {
+				await DB.update('history', { ...payload, id: this.editingRecord.id });
+				this.showMessage('Calculation Updated Successfully!', 'success');
+			} else {
+				await DB.add('history', payload);
+				this.showMessage('Calculation Saved Successfully!', 'success');
+			}
+
+			this.editingRecord = null;
+			this.resetForm();
+		} catch (error) {
+			console.error('Save failed:', error);
+			this.showMessage('Failed to save calculation', 'error');
+		}
+	},
+
+	resetForm() {
+		const invBody = document.getElementById('invTableBody');
+		const expenseBody = document.getElementById('expenseTableBody');
+		if (invBody) invBody.innerHTML = '';
+		if (expenseBody) expenseBody.innerHTML = '';
+
+		document.querySelectorAll('#cashTableBody .cash-qty').forEach(input => {
+			input.value = '0';
+		});
+
+		this.addProductRow();
+		this.recalculate();
+	},
+
+	loadForEdit(record) {
+		if (!record) return;
+		this.editingRecord = record;
+
+		const invBody = document.getElementById('invTableBody');
+		const expenseBody = document.getElementById('expenseTableBody');
+		if (invBody) invBody.innerHTML = '';
+		if (expenseBody) expenseBody.innerHTML = '';
+
+		(record.calculation || []).forEach(row => this.addProductRow(row));
+		(record.expenses || []).forEach(exp => this.addExpenseRow(exp));
+
+		const cashDetail = record.cashDetail || [];
+		cashDetail.forEach(detail => {
+			const row = document.querySelector(`#cashTableBody tr[data-note="${detail.note}"]`);
+			if (row) {
+				const input = row.querySelector('.cash-qty');
+				if (input) input.value = this.toNumberValue(detail.qty);
+			}
+		});
+
+		this.recalculate();
+	},
+
+	openCustomerModal(defaultName = '') {
+		const modal = document.getElementById('customerModal');
+		const input = document.getElementById('customerNameInput');
+		if (input) input.value = defaultName;
+		if (modal) modal.classList.add('show');
+		if (input) input.focus();
+	},
+
+	closeCustomerModal() {
+		const modal = document.getElementById('customerModal');
+		if (modal) modal.classList.remove('show');
+		if (this.customerResolve) {
+			this.customerResolve(null);
+			this.customerResolve = null;
+		}
+	},
+
+	submitCustomerModal() {
+		const input = document.getElementById('customerNameInput');
+		const value = input ? input.value.trim() : '';
+		if (!value) {
+			this.showMessage('Please enter customer name', 'warning');
+			return;
+		}
+		if (this.customerResolve) {
+			this.customerResolve(value);
+			this.customerResolve = null;
+		}
+		const modal = document.getElementById('customerModal');
+		if (modal) modal.classList.remove('show');
+	},
+
+	promptCustomerName(defaultName = '') {
+		return new Promise(resolve => {
+			this.customerResolve = resolve;
+			this.openCustomerModal(defaultName);
+		});
+	},
+
+	attachSwipeToRow(row, onDelete) {
+		let startX = 0;
+		let startY = 0;
+		let currentX = 0;
+		let swiping = false;
+
+		row.addEventListener('touchstart', (e) => {
+			const touch = e.touches[0];
+			startX = touch.clientX;
+			startY = touch.clientY;
+			currentX = 0;
+			swiping = true;
+		}, { passive: true });
+
+		row.addEventListener('touchmove', (e) => {
+			if (!swiping) return;
+			const touch = e.touches[0];
+			const deltaX = touch.clientX - startX;
+			const deltaY = touch.clientY - startY;
+
+			if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX < 0) {
+				currentX = deltaX;
+				row.style.transform = `translateX(${deltaX}px)`;
+			}
+		}, { passive: true });
+
+		row.addEventListener('touchend', () => {
+			if (!swiping) return;
+			swiping = false;
+			const threshold = -80;
+			if (currentX < threshold) {
+				row.style.transform = 'translateX(-40px)';
+				this.confirmDelete(() => {
+					onDelete();
+				}, () => {
+					row.style.transform = 'translateX(0px)';
+				});
+			} else {
+				row.style.transform = 'translateX(0px)';
+			}
+		});
+	},
+
+	confirmDelete(onConfirm, onCancel) {
+		if (confirm('Are you sure you want to delete?')) {
+			onConfirm();
+		} else if (onCancel) {
+			onCancel();
+		}
+	},
+
+	getProductByName(name) {
+		return this.products.find(product => product.name === name);
+	},
+
+	toNumberValue(value) {
+		if (value === '' || value === null || value === undefined) return 0;
+		const num = parseFloat(value);
+		return Number.isFinite(num) ? num : 0;
+	},
+
+	parsePrice(value, product) {
+		if (value === '' || value === null || value === undefined) return 0;
+		const num = parseFloat(value);
+		if (Number.isFinite(num)) return num;
+		return product ? this.toNumberValue(product.price) : 0;
+	},
+
+	showMessage(message, type = 'info') {
+		if (window.App && typeof App.showToast === 'function') {
+			App.showToast(message, type);
+		} else {
+			alert(message);
+		}
+	},
+
+	refresh() {
+		this.loadProducts();
+	},
+
+	destroy() {
+		this.products = [];
+		this.editingRecord = null;
+	}
+};
+
+// Register module
+if (window.App) {
+	App.registerModule('delivery', DeliveryModule);
+}
+
+window.DeliveryModule = DeliveryModule;

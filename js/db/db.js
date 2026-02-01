@@ -4,11 +4,12 @@
 
 const DB = {
     name: 'MimiProDB',
-    version: 4,
+    version: 5,
     instance: null,
 
     stores: {
         products: 'products',
+        history: 'history',
         deliveries: 'deliveries',
         employees: 'employees',
         attendance: 'attendance',
@@ -54,6 +55,15 @@ const DB = {
                     deliveryStore.createIndex('date', 'date', { unique: false });
                     deliveryStore.createIndex('deliverymanId', 'deliverymanId', { unique: false });
                     deliveryStore.createIndex('synced', 'synced', { unique: false });
+                }
+
+                // History store (Delivery Calculation)
+                if (!db.objectStoreNames.contains('history')) {
+                    const historyStore = db.createObjectStore('history', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    historyStore.createIndex('date', 'date', { unique: false });
                 }
 
                 // Employees store
