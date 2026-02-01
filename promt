@@ -1,98 +1,93 @@
-DETAILED AGENT PROMPT — Cash Denominations Design (Professional, Classic, Compact)
+DETAILED AGENT PROMPT — Credit (Unpaid) Card (A‑to‑Z: Design, UI, Logic, Inputs, Popups, JS)
 
 Goal
-Make the Cash Denominations card look more professional, classic, and compact. Only the design should change. All IDs, layout structure, and calculations must remain identical. No JS logic changes.
+Add a new “Credit (Unpaid)” card to the Delivery Calculation page. It must look consistent with the app, be compact, and integrate into totals. This card tracks unpaid amounts (credit) separately from expenses. Only this new card and its related logic are added; existing UI/logic remains unchanged.
 
-Scope
-- Card title: “Cash Denominations”
-- Table ID: cashTable
-- Rows: Note, Qty, Total
-- Summary line: “Cash: ৳ <value>”
+Placement
+Insert the Credit card directly after “Extra Expenses” card and before “Summary” card.
 
-Constraints (Must Not Change)
-- Do NOT change table structure or columns.
-- Do NOT change column widths unless visually required for compactness (keep same overall width).
-- Do NOT change any calculations or JS logic.
-- Do NOT remove any rows or denominations.
-- Keep same IDs and DOM structure.
+UI Structure (Exact)
+Card title: “Credit (Unpaid)”
+Table ID: creditTable
+Columns: “Customer” | “Amount”
+Add button: “+ Add Credit” (full width)
+Total line: “Credit: ৳ <totalCredit>” aligned right
 
-Design Direction
-Professional, classic, compact:
-- Subtle borders, minimal spacing, small typography.
-- Slightly muted background for header row.
-- Clear alignment: Note left/center, Qty & Total right aligned.
-- Compact row height and input height.
-- Use neutral grays and thin borders.
+Input Rules
+- Customer: text input (optional but recommended)
+- Amount: number input (required, > 0)
+- Each row has editable amount input; changes trigger recalculation
+- Customer name should be visible and left aligned
 
-Exact Design Requirements
-1) Card look
-- Keep card padding but reduce table row height.
-- Use classic table look: thin borders, no heavy shadows.
+Modal/Popup (Recommended)
+Use a modal similar to Expense modal for adding credit items:
+- Modal ID: creditModal
+- Fields: Customer Name, Amount
+- Buttons: Cancel, Save
+- Validation: amount must be > 0 (customer can be empty)
 
-2) Table Header
-- Background: #f3f4f6 (light gray)
-- Text color: #374151
-- Font size: 11px (keep consistent)
-- Border bottom: 1px solid #e5e7eb
+Design Requirements
+- Keep same card style: white background, rounded corners, soft shadow
+- Table compact; font size 11px
+- Inputs same style as others (border, radius, focus)
+- Total row text bold
 
-3) Table Body
-- Row height compact: padding 6px 4px
-- Border bottom: 1px solid #eef2f7
-- Alternate subtle row background (optional): #fafafa
+JavaScript Requirements
+State:
+- creditBody = document.querySelector('#creditTable tbody');
 
-4) Inputs (Qty)
-- Height: 26px
-- Font size: 11px
-- Border: 1px solid #d1d5db
-- Radius: 6px (classic)
-- Background: #fff
-- Focus: border-color #6b7280
+Functions:
+1) addCredit() — open modal
+2) closeCreditModal() — close modal
+3) saveCreditFromModal() — validate input, append row
+4) calcAll() — include credit total
 
-5) Readonly “Total” column
-- Use light gray background #f9fafb
-- Font weight: 600
-- Text color: #111827
+Row Template
+<tr>
+	<td>Customer Name</td>
+	<td><input type="number" value="amount"></td>
+</tr>
 
-6) Note column
-- Font weight: 600
-- Color: #111827
-- Align center or left (match existing alignment style).
+Event Hooks
+- On amount input change: calcAll()
+- Add swipe‑to‑delete to credit rows (same pattern as expenses)
 
-7) Summary line
-- Keep right aligned.
-- Slightly bolder: font-weight 600.
+Calculation Logic Update
+Existing net:
+Net = Sales − Cash − Expenses
 
-CSS Changes (Additions Only; Scoped)
-Apply styles scoped to the Cash Denominations card:
+New net:
+Net = Sales − Cash − Expenses − Credit
 
-- #cashTable { border-collapse: collapse; font-size: 11px; }
-- #cashTable th {
-		background: #f3f4f6;
-		color: #374151;
-		border-bottom: 1px solid #e5e7eb;
-		padding: 6px 4px;
-	}
-- #cashTable td {
-		padding: 6px 4px;
-		border-bottom: 1px solid #eef2f7;
-	}
-- #cashTable tbody tr:nth-child(even) { background: #fafafa; }
-- #cashTable td:first-child { font-weight: 600; color: #111827; }
-- #cashTable td:last-child { background: #f9fafb; font-weight: 600; color: #111827; }
-- #cashTable input[type="number"] {
-		height: 26px;
-		font-size: 11px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		background: #fff;
-	}
-- #cashTable input[type="number"]:focus {
-		border-color: #6b7280;
-	}
+Totals:
+- totalCredit = sum of credit amounts
+- Display in credit card and in Summary (new row)
+
+Summary Box Update
+Add new summary row:
+- “Total Credit:” ৳ <summaryCredit>
+Update Net row accordingly.
+
+Data Save (History)
+When saving calculation:
+- Add credit data array to calcObj:
+	credit: [{ name, amount }]
+- Add totalCredit to calcObj
+
+When viewing/printing:
+- Display credit section similar to expenses (optional but recommended)
+
+When editing a saved calculation:
+- Load credit rows into creditTable
+
+Validation Messages
+- If credit amount invalid: “Please enter a valid credit amount”
 
 Acceptance Criteria
-- Cash Denominations table looks compact and professional.
-- Only visual design changes; calculations and behavior remain identical.
-- No changes to table structure or IDs.
+- Credit card UI matches app style
+- Credit totals update live
+- Net reflects credit
+- Credit rows can be added/edited/deleted
+- Saved history includes credit details
 
 End of Prompt

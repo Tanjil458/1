@@ -83,6 +83,25 @@ const DeliveryModule = {
 			</div>
 
 			<div class="card">
+				<div class="delivery-header">
+					<h3>Credit (Unpaid)</h3>
+					<div class="total-pill">Credit: ৳ <span id="creditTotal">0</span></div>
+				</div>
+				<div style="overflow-x:auto;">
+					<table class="table" id="creditTable">
+						<thead>
+							<tr>
+								<th>Customer</th>
+								<th>Amount</th>
+							</tr>
+						</thead>
+						<tbody id="creditTableBody"></tbody>
+					</table>
+				</div>
+				<button class="btn btn-secondary btn-block" id="addCreditBtn">+ Add Credit</button>
+			</div>
+
+			<div class="card">
 				<h3>Summary</h3>
 				<div class="summary-box">
 					<div class="summary-row">
@@ -96,6 +115,10 @@ const DeliveryModule = {
 					<div class="summary-row">
 						<span>Total Expenses</span>
 						<strong>৳ <span id="summaryExpense">0</span></strong>
+					</div>
+					<div class="summary-row">
+						<span>Total Credit</span>
+						<strong>৳ <span id="summaryCredit">0</span></strong>
 					</div>
 					<div class="summary-row summary-row-total">
 						<span>Net Total</span>
@@ -124,6 +147,29 @@ const DeliveryModule = {
 					<div class="modal-actions">
 						<button class="btn btn-secondary" data-close-expense>Cancel</button>
 						<button class="btn btn-primary" id="expenseSaveBtn">Save</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal" id="creditModal">
+				<div class="modal-content">
+					<div class="modal-header">
+						<div class="modal-title">Add Credit</div>
+						<button class="modal-close" data-close-credit>×</button>
+					</div>
+					<div class="modal-body">
+						<div class="form-group">
+							<label class="form-label">Customer Name</label>
+							<input type="text" id="creditNameInput" class="form-input" placeholder="Customer" />
+						</div>
+						<div class="form-group">
+							<label class="form-label">Amount</label>
+							<input type="number" id="creditAmountInput" class="form-input" min="0" step="0.01" value="0" />
+						</div>
+					</div>
+					<div class="modal-actions">
+						<button class="btn btn-secondary" data-close-credit>Cancel</button>
+						<button class="btn btn-primary" id="creditSaveBtn">Save</button>
 					</div>
 				</div>
 			</div>
@@ -178,13 +224,27 @@ const DeliveryModule = {
 			addExpenseBtn.addEventListener('click', () => this.openExpenseModal());
 		}
 
+		const addCreditBtn = document.getElementById('addCreditBtn');
+		if (addCreditBtn) {
+			addCreditBtn.addEventListener('click', () => this.openCreditModal());
+		}
+
 		const expenseSaveBtn = document.getElementById('expenseSaveBtn');
 		if (expenseSaveBtn) {
 			expenseSaveBtn.addEventListener('click', () => this.saveExpense());
 		}
 
+		const creditSaveBtn = document.getElementById('creditSaveBtn');
+		if (creditSaveBtn) {
+			creditSaveBtn.addEventListener('click', () => this.saveCredit());
+		}
+
 		document.querySelectorAll('[data-close-expense]').forEach(btn => {
 			btn.addEventListener('click', () => this.closeExpenseModal());
+		});
+
+		document.querySelectorAll('[data-close-credit]').forEach(btn => {
+			btn.addEventListener('click', () => this.closeCreditModal());
 		});
 
 		const saveCalculationBtn = document.getElementById('saveCalculationBtn');
@@ -325,6 +385,20 @@ const DeliveryModule = {
 		if (modal) modal.classList.remove('show');
 	},
 
+	openCreditModal() {
+		const modal = document.getElementById('creditModal');
+		const nameInput = document.getElementById('creditNameInput');
+		const amountInput = document.getElementById('creditAmountInput');
+		if (nameInput) nameInput.value = '';
+		if (amountInput) amountInput.value = '0';
+		if (modal) modal.classList.add('show');
+	},
+
+	closeCreditModal() {
+		const modal = document.getElementById('creditModal');
+		if (modal) modal.classList.remove('show');
+	},
+
 	saveExpense() {
 		const nameInput = document.getElementById('expenseNameInput');
 		const amountInput = document.getElementById('expenseAmountInput');
@@ -341,6 +415,22 @@ const DeliveryModule = {
 		this.recalculate();
 	},
 
+	saveCredit() {
+		const nameInput = document.getElementById('creditNameInput');
+		const amountInput = document.getElementById('creditAmountInput');
+		const name = nameInput ? nameInput.value.trim() : '';
+		const amount = amountInput ? parseFloat(amountInput.value) : 0;
+
+		if (!Number.isFinite(amount) || amount <= 0) {
+			this.showMessage('Please enter a valid credit amount', 'warning');
+			return;
+		}
+
+		this.addCreditRow({ name, amount });
+		this.closeCreditModal();
+		this.recalculate();
+	},
+
 	addExpenseRow(data = {}) {
 		const tbody = document.getElementById('expenseTableBody');
 		if (!tbody) return;
@@ -353,6 +443,28 @@ const DeliveryModule = {
 		`;
 
 		row.querySelector('.expense-amount').addEventListener('input', () => this.recalculate());
+
+		this.attachSwipeToRow(row, () => {
+			row.remove();
+			this.recalculate();
+		});
+
+		tbody.appendChild(row);
+		this.recalculate();
+	},
+
+	addCreditRow(data = {}) {
+		const tbody = document.getElementById('creditTableBody');
+		if (!tbody) return;
+
+		const row = document.createElement('tr');
+		row.className = 'swipeable-row';
+		row.innerHTML = `
+			<td>${data.name || ''}</td>
+			<td><input type="number" class="credit-amount" min="0" step="0.01" value="${this.toNumberValue(data.amount)}" /></td>
+		`;
+
+		row.querySelector('.credit-amount').addEventListener('input', () => this.recalculate());
 
 		this.attachSwipeToRow(row, () => {
 			row.remove();
@@ -408,17 +520,24 @@ const DeliveryModule = {
 			expenseTotal += this.toNumberValue(input.value);
 		});
 
+		let creditTotal = 0;
+		document.querySelectorAll('#creditTableBody .credit-amount').forEach(input => {
+			creditTotal += this.toNumberValue(input.value);
+		});
+
 		const salesRounded = Math.round(salesTotal);
 		const cashRounded = Math.round(cashTotal);
 		const expenseRounded = Math.round(expenseTotal);
-		const netRounded = Math.round(salesTotal - cashTotal - expenseTotal);
+		const netRounded = Math.round(salesTotal - cashTotal - expenseTotal - creditTotal);
 
 		this.updateText('salesTotal', salesRounded);
 		this.updateText('cashTotal', cashRounded);
 		this.updateText('expenseTotal', expenseRounded);
+		this.updateText('creditTotal', Math.round(creditTotal));
 		this.updateText('summarySales', salesRounded);
 		this.updateText('summaryCash', cashRounded);
 		this.updateText('summaryExpense', expenseRounded);
+		this.updateText('summaryCredit', Math.round(creditTotal));
 		this.updateText('summaryNet', netRounded);
 	},
 
@@ -448,6 +567,7 @@ const DeliveryModule = {
 		const sales = document.getElementById('summarySales')?.textContent || '0';
 		const cash = document.getElementById('summaryCash')?.textContent || '0';
 		const totalExpense = document.getElementById('summaryExpense')?.textContent || '0';
+		const totalCredit = document.getElementById('summaryCredit')?.textContent || '0';
 		const net = document.getElementById('summaryNet')?.textContent || '0';
 
 		const calculation = productRows.map(row => {
@@ -468,6 +588,12 @@ const DeliveryModule = {
 			return { name, amount };
 		});
 
+		const credit = Array.from(document.querySelectorAll('#creditTableBody tr')).map(row => {
+			const name = row.children[0]?.textContent || '';
+			const amount = this.toNumberValue(row.querySelector('.credit-amount')?.value);
+			return { name, amount };
+		});
+
 		const cashDetail = Array.from(document.querySelectorAll('#cashTableBody tr')).map(row => {
 			const note = parseFloat(row.dataset.note || '0');
 			const qty = this.toNumberValue(row.querySelector('.cash-qty')?.value);
@@ -481,9 +607,11 @@ const DeliveryModule = {
 			sales: sales.toString(),
 			cash: cash.toString(),
 			totalExpense: totalExpense.toString(),
+			totalCredit: totalCredit.toString(),
 			net: net.toString(),
 			calculation,
 			expenses,
+			credit,
 			cashDetail
 		};
 
@@ -507,8 +635,10 @@ const DeliveryModule = {
 	resetForm() {
 		const invBody = document.getElementById('invTableBody');
 		const expenseBody = document.getElementById('expenseTableBody');
+		const creditBody = document.getElementById('creditTableBody');
 		if (invBody) invBody.innerHTML = '';
 		if (expenseBody) expenseBody.innerHTML = '';
+		if (creditBody) creditBody.innerHTML = '';
 
 		document.querySelectorAll('#cashTableBody .cash-qty').forEach(input => {
 			input.value = '0';
@@ -524,11 +654,14 @@ const DeliveryModule = {
 
 		const invBody = document.getElementById('invTableBody');
 		const expenseBody = document.getElementById('expenseTableBody');
+		const creditBody = document.getElementById('creditTableBody');
 		if (invBody) invBody.innerHTML = '';
 		if (expenseBody) expenseBody.innerHTML = '';
+		if (creditBody) creditBody.innerHTML = '';
 
 		(record.calculation || []).forEach(row => this.addProductRow(row));
 		(record.expenses || []).forEach(exp => this.addExpenseRow(exp));
+		(record.credit || []).forEach(cr => this.addCreditRow(cr));
 
 		const cashDetail = record.cashDetail || [];
 		cashDetail.forEach(detail => {
