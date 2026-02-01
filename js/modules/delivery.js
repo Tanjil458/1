@@ -4,12 +4,15 @@
 
 const DeliveryModule = {
 	products: [],
+	areas: [],
+	customers: [],
 	editingRecord: null,
 	cashNotes: [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1],
 
 	async init() {
 		this.render();
 		await this.loadProducts();
+		await this.loadCreditSources();
 		this.addProductRow();
 	},
 
@@ -159,8 +162,15 @@ const DeliveryModule = {
 					</div>
 					<div class="modal-body">
 						<div class="form-group">
+							<label class="form-label">Area</label>
+							<select id="creditAreaSelect" class="form-input">
+								<option value="">Select area</option>
+							</select>
+						</div>
+						<div class="form-group credit-customer-group">
 							<label class="form-label">Customer Name</label>
-							<input type="text" id="creditNameInput" class="form-input" placeholder="Customer" />
+							<input type="text" id="creditNameInput" class="form-input" placeholder="Customer" autocomplete="off" />
+							<div class="credit-customer-dropdown" id="creditCustomerDropdown"></div>
 						</div>
 						<div class="form-group">
 							<label class="form-label">Amount</label>
@@ -247,6 +257,17 @@ const DeliveryModule = {
 			btn.addEventListener('click', () => this.closeCreditModal());
 		});
 
+		const creditAreaSelect = document.getElementById('creditAreaSelect');
+		if (creditAreaSelect) {
+			creditAreaSelect.addEventListener('change', () => this.handleCreditAreaChange());
+		}
+
+		const creditNameInput = document.getElementById('creditNameInput');
+		if (creditNameInput) {
+			creditNameInput.addEventListener('input', () => this.updateCreditCustomerDropdown());
+			creditNameInput.addEventListener('focus', () => this.updateCreditCustomerDropdown());
+		}
+
 		const saveCalculationBtn = document.getElementById('saveCalculationBtn');
 		if (saveCalculationBtn) {
 			saveCalculationBtn.addEventListener('click', () => this.handleSave());
@@ -278,6 +299,20 @@ const DeliveryModule = {
 			this.refreshProductSelects();
 		} catch (error) {
 			console.error('Error loading products:', error);
+		}
+	},
+
+	async loadCreditSources() {
+		try {
+			const [areas, customers] = await Promise.all([
+				DB.getAll('areas'),
+				DB.getAll('customers')
+			]);
+			this.areas = areas || [];
+			this.customers = customers || [];
+			this.populateCreditAreas();
+		} catch (error) {
+			console.error('Error loading credit sources:', error);
 		}
 	},
 
@@ -389,14 +424,95 @@ const DeliveryModule = {
 		const modal = document.getElementById('creditModal');
 		const nameInput = document.getElementById('creditNameInput');
 		const amountInput = document.getElementById('creditAmountInput');
+		const areaSelect = document.getElementById('creditAreaSelect');
 		if (nameInput) nameInput.value = '';
 		if (amountInput) amountInput.value = '0';
+		if (areaSelect) areaSelect.value = '';
+		this.populateCreditAreas();
+		this.clearCreditCustomerDropdown();
 		if (modal) modal.classList.add('show');
 	},
 
 	closeCreditModal() {
 		const modal = document.getElementById('creditModal');
 		if (modal) modal.classList.remove('show');
+		this.clearCreditCustomerDropdown();
+	},
+
+	populateCreditAreas() {
+		const areaSelect = document.getElementById('creditAreaSelect');
+		if (!areaSelect) return;
+		const currentValue = areaSelect.value;
+		areaSelect.innerHTML = '<option value="">Select area</option>';
+		this.areas.forEach(area => {
+			const option = document.createElement('option');
+			option.value = area.name;
+			option.textContent = area.name;
+			areaSelect.appendChild(option);
+		});
+		areaSelect.value = currentValue;
+	},
+
+	handleCreditAreaChange() {
+		const nameInput = document.getElementById('creditNameInput');
+		if (nameInput) nameInput.value = '';
+		this.updateCreditCustomerDropdown();
+	},
+
+	updateCreditCustomerDropdown() {
+		const areaSelect = document.getElementById('creditAreaSelect');
+		const nameInput = document.getElementById('creditNameInput');
+		const dropdown = document.getElementById('creditCustomerDropdown');
+		if (!areaSelect || !nameInput || !dropdown) return;
+
+		const area = areaSelect.value;
+		const query = nameInput.value.trim().toLowerCase();
+
+		dropdown.innerHTML = '';
+		if (!area) {
+			const hint = document.createElement('div');
+			hint.className = 'credit-customer-hint';
+			hint.textContent = 'Select area first';
+			dropdown.appendChild(hint);
+			dropdown.classList.add('show');
+			return;
+		}
+
+		const matches = this.customers.filter(customer => {
+			const sameArea = customer.area === area;
+			const name = (customer.name || '').toLowerCase();
+			return sameArea && (query === '' || name.includes(query));
+		});
+
+		if (matches.length === 0) {
+			const empty = document.createElement('div');
+			empty.className = 'credit-customer-hint';
+			empty.textContent = 'No customers found';
+			dropdown.appendChild(empty);
+			dropdown.classList.add('show');
+			return;
+		}
+
+		matches.forEach(customer => {
+			const item = document.createElement('button');
+			item.type = 'button';
+			item.className = 'credit-customer-item';
+			item.textContent = customer.name;
+			item.addEventListener('click', () => {
+				nameInput.value = customer.name;
+				this.clearCreditCustomerDropdown();
+			});
+			dropdown.appendChild(item);
+		});
+
+		dropdown.classList.add('show');
+	},
+
+	clearCreditCustomerDropdown() {
+		const dropdown = document.getElementById('creditCustomerDropdown');
+		if (!dropdown) return;
+		dropdown.innerHTML = '';
+		dropdown.classList.remove('show');
 	},
 
 	saveExpense() {

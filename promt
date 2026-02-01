@@ -1,12 +1,38 @@
-Add a new **Customer Listing** page and link it in the **side nav bar**. It should be **identical in layout, behavior, and UI** to the other listing pages (table, search, add/edit/delete, swipe-to-delete, history/save, etc.).
+Delivery Page — Add Credit Popup Enhancement (Detailed)
 
-**Only difference:** the **Add Customer** popup must include an **Area** field as a **dropdown select**. The dropdown options must be loaded from the **Area Listing** page’s saved areas.
+Goal:
+Enhance the “Add Credit” popup on the Delivery page by introducing an Area selector and a customer name input with a filtered customer dropdown.
 
 Requirements:
-- The customer list and its add/edit/delete flow must match existing listing pages.
-- Area field in the Add/Edit popup:
-	- Use a dropdown select.
-	- Populate options from saved Area listing data.
-	- Store the selected area with the customer record.
-- Keep naming/structure consistent with existing listing pages.
-- Update side nav to include “Customer Listing”.
+1) Add Area field (first in the popup)
+   - Label: “Area”
+   - Control: <select>
+   - Options: Loaded from saved Area Listing data.
+   - Must load dynamically from the same storage used by Area Listing.
+
+2) Customer Name field (after Area)
+   - Label: “Customer Name”
+   - Control: text input, user can type freely.
+   - As the user types, show a dropdown list of customer names.
+
+3) Filtered Customer Dropdown
+   - Source: Customer Listing data.
+   - Filter: Only customers whose “Area” matches the selected Area.
+   - If no area is selected, show no results or a “Select Area first” hint.
+   - Selecting a customer from the dropdown fills the Customer Name input.
+
+4) Behavior
+   - Changing the Area resets the Customer Name input and dropdown list.
+   - Preserve existing credit popup styling and validation patterns.
+   - Do not break existing credit calculations or save flow.
+
+Implementation notes:
+- Follow existing modal/component patterns in delivery.js.
+- Keep storage API consistent with existing listing pages.
+- Use the same DOM structure/classes used for other popup inputs for visual consistency.
+
+Acceptance:
+- Area appears at the top.
+- Customer dropdown only shows customers in the chosen area.
+- Selected customer fills the name input.
+- Save works normally and stores the customer name as before.
