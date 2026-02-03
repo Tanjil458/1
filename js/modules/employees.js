@@ -5,6 +5,10 @@
 const EmployeesModule = {
     employees: [],
     products: [],
+    advances: [],
+    productAdvances: [],
+    repayments: [],
+    attendance: [],
 
     init() {
         this.render();
@@ -128,6 +132,12 @@ const EmployeesModule = {
                 presentTodayEl.textContent = presentSet.size;
             }
 
+            // Preload advances/product advances/repayments/attendance so card can show remaining balance
+            this.advances = await DB.getAll('advances') || [];
+            this.productAdvances = await DB.getAll('productAdvances') || [];
+            this.repayments = await DB.getAll('repayments') || [];
+            this.attendance = await DB.getAll('attendance') || [];
+
             this.renderEmployeeCards(presentSet);
         } catch (error) {
             console.error('Error loading employee data:', error);
@@ -160,17 +170,38 @@ const EmployeesModule = {
         listEl.innerHTML = this.employees.map(emp => {
             const isPresent = presentSet.has(String(emp.id));
             const salaryType = emp.salaryType || 'Daily';
-            const salaryValue = emp.salary || 0;
+            const salaryValue = this.parseNumber(emp.salary) || 0;
+
+            // Calculate advances/repayments for this employee
+            const cashRows = (this.advances || []).filter(r => String(r.employeeId) === String(emp.id));
+            const productRows = (this.productAdvances || []).filter(r => String(r.employeeId) === String(emp.id));
+
+            const totalCash = cashRows.reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
+            const totalProduct = productRows.reduce((sum, row) => sum + this.parseNumber(row.totalValue), 0);
+
+            // Determine salary total for current month (daily uses attendance records)
+            const monthKey = new Date().toISOString().slice(0, 7);
+            const workingDays = (this.attendance || [])
+                .filter(record => String(record.employeeId) === String(emp.id))
+                .filter(record => record.date && record.date.startsWith(monthKey))
+                .filter(record => record.status === 'present' || record.present === true)
+                .length;
+            const salaryRate = this.parseNumber(emp.salary) || 0;
+            const salaryTotal = (String(salaryType).toLowerCase() === 'daily') ? (workingDays * salaryRate) : salaryRate;
+
+            const remainingBalance = salaryTotal - (totalCash + totalProduct);
+
             return `
                 <div class="employee-card" data-details="${emp.id}">
                     <div class="employee-card-header">
                         <div class="employee-name">${emp.name}</div>
-                        <span class="badge ${isPresent ? 'badge-success' : 'badge-warning'}">
-                            ${isPresent ? 'Present' : 'Absent'}
-                        </span>
+                        <div class="employee-right">
+                            <span class="employee-balance">৳${this.formatCurrency(remainingBalance)}</span>
+                            <span class="badge ${isPresent ? 'badge-success' : 'badge-warning'}">${isPresent ? 'Present' : 'Absent'}</span>
+                        </div>
                     </div>
                     <div class="employee-meta">Role: ${emp.role || '—'}</div>
-                    <div class="employee-meta">Salary: ৳${salaryValue} (${salaryType})</div>
+                    <div class="employee-meta">Salary: ৳${this.formatCurrency(salaryValue)} (${salaryType})</div>
                     <div class="employee-card-actions">
                         <button class="btn btn-primary btn-small" data-advance="${emp.id}">Add Advance</button>
                     </div>

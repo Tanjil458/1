@@ -347,6 +347,18 @@
     color: #0f172a;
 }
 
+.employee-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.employee-balance {
+    font-weight: 700;
+    font-size: 14px;
+    color: #0f172a;
+}
+
 .employee-meta {
     font-size: 13px;
     color: #475569;
