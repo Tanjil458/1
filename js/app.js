@@ -134,6 +134,7 @@ const App = {
         // Map pages to side nav hrefs
         const pageToSideNav = {
             'employeeListingPage': '#employee-listing',
+            'advancesPage': '#advances',
             'productListingPage': '#product-listing',
             'historyPage': '#history',
             'settingsPage': '#settings',
@@ -171,6 +172,9 @@ const App = {
         switch (action) {
             case 'employee-listing':
                 this.navigateTo('employeeListingPage');
+                break;
+            case 'advances':
+                this.navigateTo('advancesPage');
                 break;
             case 'product-listing':
                 this.navigateTo('productListingPage');

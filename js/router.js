@@ -33,6 +33,14 @@ const Router = {
                 module: 'attendance',
                 title: 'Attendance'
             },
+            'salaryPage': {
+                module: 'salary',
+                title: 'Salary'
+            },
+            'advancesPage': {
+                module: 'advances',
+                title: 'Advances'
+            },
             'creditsPage': {
                 module: 'credits',
                 title: 'Credits'

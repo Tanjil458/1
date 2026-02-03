@@ -4,7 +4,7 @@
 
 const DB = {
     name: 'MimiProDB',
-    version: 6,
+    version: 7,
     instance: null,
 
     stores: {
@@ -18,6 +18,9 @@ const DB = {
         credits: 'credits',
         creditPayments: 'creditPayments',
         advances: 'advances',
+        productAdvances: 'productAdvances',
+        repayments: 'repayments',
+        salaryReports: 'salaryReports',
         expenses: 'expenses',
         areas: 'areas'
     },
@@ -133,6 +136,38 @@ const DB = {
                     });
                     advanceStore.createIndex('employeeId', 'employeeId', { unique: false });
                     advanceStore.createIndex('date', 'date', { unique: false });
+                }
+
+                // Product Advances store
+                if (!db.objectStoreNames.contains('productAdvances')) {
+                    const productAdvanceStore = db.createObjectStore('productAdvances', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    productAdvanceStore.createIndex('employeeId', 'employeeId', { unique: false });
+                    productAdvanceStore.createIndex('date', 'date', { unique: false });
+                    productAdvanceStore.createIndex('productName', 'productName', { unique: false });
+                }
+
+                // Repayments store
+                if (!db.objectStoreNames.contains('repayments')) {
+                    const repaymentStore = db.createObjectStore('repayments', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    repaymentStore.createIndex('employeeId', 'employeeId', { unique: false });
+                    repaymentStore.createIndex('date', 'date', { unique: false });
+                    repaymentStore.createIndex('method', 'method', { unique: false });
+                }
+
+                // Salary Reports store
+                if (!db.objectStoreNames.contains('salaryReports')) {
+                    const salaryStore = db.createObjectStore('salaryReports', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    salaryStore.createIndex('month', 'month', { unique: false });
+                    salaryStore.createIndex('employeeId', 'employeeId', { unique: false });
                 }
 
                 // Areas store

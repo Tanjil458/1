@@ -70,6 +70,10 @@ const EmployeeListingModule = {
                                 <option value="Monthly">Monthly</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Login Password</label>
+                            <input id="empPassword" type="password" placeholder="Set password">
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button class="btn btn-secondary" onclick="EmployeeListingModule.closeModal()">Cancel</button>
@@ -141,6 +145,7 @@ const EmployeeListingModule = {
         document.getElementById('empRole').value = '';
         document.getElementById('empSalary').value = '';
         document.getElementById('empSalaryType').value = 'Daily';
+        document.getElementById('empPassword').value = '';
         this.editIndex = -1;
 
         modal.classList.add('show');
@@ -163,6 +168,7 @@ const EmployeeListingModule = {
         document.getElementById('empRole').value = emp.role;
         document.getElementById('empSalary').value = emp.salary;
         document.getElementById('empSalaryType').value = emp.salaryType;
+        document.getElementById('empPassword').value = emp.loginPassword || '';
 
         document.getElementById('employeeModal').classList.add('show');
     },
@@ -174,6 +180,7 @@ const EmployeeListingModule = {
         const role = document.getElementById('empRole').value;
         const salary = parseFloat(document.getElementById('empSalary').value);
         const salaryType = document.getElementById('empSalaryType').value;
+        const loginPassword = document.getElementById('empPassword').value.trim();
 
         console.log('📝 Employee data:', { name, mobile, role, salary, salaryType });
 
@@ -183,7 +190,7 @@ const EmployeeListingModule = {
             return;
         }
 
-        const employeeData = { name, mobile, role, salary, salaryType, active: true };
+        const employeeData = { name, mobile, role, salary, salaryType, loginPassword, active: true };
         console.log('✅ Validation passed, saving:', employeeData);
 
         try {

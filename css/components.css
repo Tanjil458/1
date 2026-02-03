@@ -312,6 +312,54 @@
     gap: 12px;
 }
 
+/* Employee Card List */
+.employees-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+@media (min-width: 768px) {
+    .employees-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.employee-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.employee-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.employee-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #0f172a;
+}
+
+.employee-meta {
+    font-size: 13px;
+    color: #475569;
+    margin-top: 4px;
+}
+
+.employee-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
 .credit-filter-bar {
     display: flex;
     align-items: flex-end;
@@ -655,6 +703,18 @@
 .payment-amount:focus {
     border-color: #f59e0b;
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.delivery-employee-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+    touch-action: pan-y;
+}
+
+.delivery-employee-row .form-input {
+    flex: 1;
 }
 
 /* Print Document Styles */

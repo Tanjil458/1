@@ -1,11 +1,317 @@
---------------------custommer name, area name--------------------
---------------------Mobile number--------------------
---------------------Date of creadit--------------------
-initial amount ---------------------------5000$
-paid amount ---------------------------2000$
-remaining amount ---------------------------3000$
+✅ MASTER AGENT PROMPT
+MimiPro — Employee, Salary, Advance & Product Deduction System (A–Z)
 
-this is how i want the view details of creadit history
---------------------creadit history--------------------
+You are building the Employee Payroll & Advance Calculation System for a distributor app called MimiPro.
 
-AND MAKE THE creadit CARD LIST DESIGN OR UI COMPACT, ANDMODERN 
+This system must be accurate, auditable, offline-first, and simple because it will be used daily by a business owner.
+
+1️⃣ CORE IDEA (Balaji-Style Calculation)
+
+Employees may:
+
+Work daily or monthly
+
+Take cash advances
+
+Take products in advance (rice, oil, goods, etc.)
+
+Return money later or get deductions from salary
+
+The system must:
+
+Track everything separately
+
+Then combine all deductions at salary time
+
+Never lose historical data
+
+2️⃣ EMPLOYEE TYPES
+
+Each employee has:
+
+employeeId
+name
+role (deliveryman | helper | staff)
+salaryType (daily | monthly)
+salaryRate
+loginPassword
+active
+
+Salary Types
+Daily Salary
+salary = presentDays × dailyRate
+
+Monthly Salary
+salary = fixedMonthlyRate
+
+3️⃣ ATTENDANCE SYSTEM (Salary Foundation)
+
+Attendance is the base of salary.
+
+Attendance Record
+attendanceId
+employeeId
+date (YYYY-MM-DD)
+status (present | absent)
+linkedDeliveryId (optional)
+
+
+Rules:
+
+Only one attendance per employee per day
+
+Delivery auto-marks attendance
+
+Manual override allowed (owner only)
+
+4️⃣ CASH ADVANCE SYSTEM
+
+Employees may take cash before month end.
+
+Advance Record
+advanceId
+employeeId
+amount
+date
+note
+type = "cash"
+
+
+Rules:
+
+Advance is NOT salary
+
+It is a temporary debt
+
+Deducted at salary calculation time
+
+5️⃣ PRODUCT ADVANCE SYSTEM (VERY IMPORTANT)
+
+Employees may take products instead of cash.
+
+Example:
+
+Rice
+
+Oil
+
+Grocery
+
+Company products
+
+Product Advance Record
+productAdvanceId
+employeeId
+productName
+quantity
+unitPrice
+totalValue
+date
+type = "product"
+
+
+Calculation:
+
+totalValue = quantity × unitPrice
+
+
+This totalValue behaves exactly like a cash advance.
+
+6️⃣ RETURN / REPAYMENT SYSTEM
+
+Employees may:
+
+Repay cash
+
+Return product
+
+Pay partially
+
+Repayment Record
+repaymentId
+employeeId
+amount
+date
+method (cash | product-return)
+note
+
+
+Rules:
+
+Repayment reduces outstanding balance
+
+Never delete old records
+
+Always append history
+
+7️⃣ TOTAL DEDUCTION LOGIC (CRITICAL)
+
+At salary time:
+
+Step 1: Calculate Gross Salary
+grossSalary
+
+Step 2: Calculate Total Advances
+totalCashAdvance
++ totalProductAdvance
+- totalRepayment
+= totalOutstanding
+
+Step 3: Final Payable
+payableSalary = grossSalary - totalOutstanding
+
+
+If:
+
+payableSalary < 0
+→ show: “Employee still owes money”
+
+8️⃣ MONTHLY SALARY REPORT (OWNER VIEW)
+
+For each employee show:
+
+Name
+
+Days worked
+
+Gross salary
+
+Cash advances
+
+Product advances
+
+Repayments
+
+Net payable
+
+This report must be:
+
+Filterable by month
+
+Exportable later (optional)
+
+9️⃣ EMPLOYEE LOGIN SYSTEM
+
+Employees can log in to their own account.
+
+Login Model
+employeeId
+password (hashed)
+
+Employee App Permissions (Read-Only)
+
+Employee can see:
+
+Their attendance
+
+Their salary calculation
+
+Their advances
+
+Their product deductions
+
+Their outstanding balance
+
+Employee CANNOT:
+
+Edit data
+
+See other employees
+
+Delete records
+
+🔐 SECURITY RULES
+
+Each employee ID has a password
+
+Wrong password = no access
+
+Offline login allowed (local auth)
+
+Owner has master access
+
+🔄 DATA FLOW (IMPORTANT)
+Delivery
+ → Attendance auto-mark
+ → Salary base updated
+
+Advance/Product Taken
+ → Advance table updated
+
+Repayment
+ → Balance reduced
+
+Month End
+ → Salary calculation
+ → Deduction applied
+
+🗄️ DATABASE STRUCTURE (IndexedDB)
+
+Stores required:
+
+employees
+
+attendance
+
+advances
+
+productAdvances
+
+repayments
+
+salaryReports
+
+Each record includes:
+
+id
+createdAt
+synced (true/false)
+
+☁️ BACKUP & SYNC (OPTIONAL)
+
+Local IndexedDB = main DB
+
+Firebase = backup only
+
+No realtime sync
+
+Manual / periodic backup
+
+Owner devices only
+
+🎯 DESIGN PRINCIPLES
+
+Never overwrite history
+
+Always append records
+
+Monthly calculations only read that month
+
+Clear separation of:
+
+Salary
+
+Advance
+
+Product
+
+Repayment
+
+✅ SUCCESS CONDITIONS
+
+System is correct if:
+
+Every taka is traceable
+
+No confusion at month end
+
+Employee cannot deny records
+
+Owner can audit anytime
+
+Works fully offline
+
+This system must feel like real accounting, not a demo.
+
+Accuracy > UI beauty
+History > convenience

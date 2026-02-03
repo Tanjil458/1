@@ -133,6 +133,23 @@ h1, h2, h3 {
     color: #fff;
 }
 
+.btn-ghost {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid transparent;
+}
+
+.btn-ghost:hover {
+    background: transparent;
+}
+
+.icon-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 8px;
+}
+
 .btn-small {
     padding: 6px 10px;
     font-size: 12px;
@@ -181,6 +198,16 @@ input[type="tel"] {
     font-family: inherit;
 }
 
+.highlight-input {
+    border-color: #d1a054;
+    background: #fff7e6;
+}
+
+.highlight-input:focus {
+    border-color: #c07a18;
+    box-shadow: 0 0 0 2px rgba(192, 122, 24, 0.18);
+}
+
 .form-control:focus,
 input:focus,
 select:focus,
@@ -196,11 +223,20 @@ textarea:focus {
     margin-bottom: 16px;
 }
 
+.summary-grid.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
 .summary-card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px;
+}
+
+.summary-card.compact {
+    padding: 10px;
 }
 
 .summary-label {
@@ -212,6 +248,10 @@ textarea:focus {
 .summary-value {
     font-size: 24px;
     font-weight: 700;
+}
+
+.summary-value.compact {
+    font-size: 18px;
 }
 
 .hidden {

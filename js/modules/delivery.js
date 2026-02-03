@@ -6,6 +6,7 @@ const DeliveryModule = {
 	products: [],
 	areas: [],
 	customers: [],
+	employees: [],
 	editingRecord: null,
 	cashNotes: [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1],
 
@@ -13,6 +14,8 @@ const DeliveryModule = {
 		this.render();
 		await this.loadProducts();
 		await this.loadCreditSources();
+		await this.loadEmployees();
+		this.addEmployeeSelectRow();
 		this.addProductRow();
 	},
 
@@ -128,6 +131,11 @@ const DeliveryModule = {
 						<strong>৳ <span id="summaryNet">0</span></strong>
 					</div>
 				</div>
+				<div class="form-group" style="margin-top: 12px;">
+					<label class="form-label">Delivery By</label>
+					<div id="deliveryEmployeeList"></div>
+					<button class="btn btn-secondary btn-small" id="addDeliveryEmployeeBtn">+ Add Employee</button>
+				</div>
 				<button class="btn btn-success btn-block" id="saveCalculationBtn">Save Calculation</button>
 			</div>
 
@@ -227,6 +235,11 @@ const DeliveryModule = {
 		const addProductBtn = document.getElementById('addProductBtn');
 		if (addProductBtn) {
 			addProductBtn.addEventListener('click', () => this.addProductRow());
+		}
+
+		const addDeliveryEmployeeBtn = document.getElementById('addDeliveryEmployeeBtn');
+		if (addDeliveryEmployeeBtn) {
+			addDeliveryEmployeeBtn.addEventListener('click', () => this.addEmployeeSelectRow());
 		}
 
 		const addExpenseBtn = document.getElementById('addExpenseBtn');
@@ -662,10 +675,158 @@ const DeliveryModule = {
 		if (el) el.textContent = value.toString();
 	},
 
+	async loadEmployees() {
+		try {
+			this.employees = await DB.getAll('employees');
+			this.populateEmployeeSelect();
+		} catch (error) {
+			console.error('Failed to load employees:', error);
+		}
+	},
+
+	populateEmployeeSelect() {
+		const list = document.getElementById('deliveryEmployeeList');
+		if (!list) return;
+		list.querySelectorAll('select').forEach(select => {
+			const currentValue = select.value;
+			select.innerHTML = '<option value="">Select employee</option>';
+			(this.employees || []).forEach(emp => {
+				const option = document.createElement('option');
+				option.value = emp.id;
+				option.textContent = emp.name;
+				select.appendChild(option);
+			});
+			select.value = currentValue;
+		});
+	},
+
+	addEmployeeSelectRow(selectedId = '') {
+		const list = document.getElementById('deliveryEmployeeList');
+		if (!list) return;
+		const wrapper = document.createElement('div');
+		wrapper.className = 'delivery-employee-row';
+		wrapper.innerHTML = `
+			<select class="form-input delivery-employee-select">
+				<option value="">Select employee</option>
+			</select>
+		`;
+		const select = wrapper.querySelector('select');
+		if (select) {
+			(this.employees || []).forEach(emp => {
+				const option = document.createElement('option');
+				option.value = emp.id;
+				option.textContent = emp.name;
+				select.appendChild(option);
+			});
+			select.value = selectedId;
+		}
+		this.addSwipeToRemoveEmployeeRow(wrapper);
+		list.appendChild(wrapper);
+	},
+
+	addSwipeToRemoveEmployeeRow(row) {
+		let startX = 0;
+		let currentX = 0;
+		let isSwiping = false;
+		let hasMoved = false;
+
+		row.addEventListener('touchstart', (e) => {
+			const point = e.touches[0];
+			startX = point.clientX;
+			currentX = startX;
+			isSwiping = true;
+			hasMoved = false;
+		}, { passive: true });
+
+		row.addEventListener('touchmove', (e) => {
+			if (!isSwiping) return;
+			const point = e.touches[0];
+			currentX = point.clientX;
+			const diff = startX - currentX;
+
+			if (Math.abs(diff) > 10) {
+				hasMoved = true;
+				e.preventDefault();
+			}
+
+			if (diff > 0 && diff < 150) {
+				row.style.transform = `translateX(-${diff}px)`;
+				row.style.background = `linear-gradient(90deg, transparent ${100 - diff / 2}%, rgba(220,53,69,0.12) 100%)`;
+			}
+		}, { passive: false });
+
+		row.addEventListener('touchend', () => {
+			if (!isSwiping) return;
+			const diff = startX - currentX;
+			if (hasMoved && diff > 100) {
+				row.style.transform = 'translateX(-40px)';
+				this.showDeleteConfirm(() => {
+					row.style.transform = 'translateX(-120px)';
+					setTimeout(() => row.remove(), 300);
+				});
+				this.pendingReset = () => {
+					row.style.transform = '';
+					row.style.background = '';
+				};
+			} else {
+				row.style.transform = '';
+				row.style.background = '';
+			}
+			isSwiping = false;
+			hasMoved = false;
+		});
+	},
+
+	getSelectedEmployees() {
+		const selects = Array.from(document.querySelectorAll('.delivery-employee-select'));
+		const selected = selects
+			.map(select => ({
+				id: select.value,
+				name: select.selectedOptions?.[0]?.textContent || ''
+			}))
+			.filter(emp => emp.id);
+		const uniqueMap = new Map();
+		selected.forEach(emp => uniqueMap.set(String(emp.id), emp));
+		return Array.from(uniqueMap.values());
+	},
+
+	async upsertAttendance(employeeId, employeeName, dateIso, linkedDeliveryId = null) {
+		if (!employeeId || !dateIso) return;
+		const dateKey = this.toLocalDateKey(new Date(dateIso));
+		try {
+			const records = await DB.query('attendance', 'date', dateKey);
+			const exists = (records || []).some(rec => String(rec.employeeId) === String(employeeId));
+			if (exists) return;
+			await DB.add('attendance', {
+				employeeId,
+				employeeName,
+				date: dateKey,
+				status: 'present',
+				present: true,
+				linkedDeliveryId
+			});
+		} catch (error) {
+			console.error('Attendance upsert failed:', error);
+		}
+	},
+
+	toLocalDateKey(dateObj) {
+		const yyyy = dateObj.getFullYear();
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		return `${yyyy}-${mm}-${dd}`;
+	},
+
 	async handleSave() {
 		const productRows = Array.from(document.querySelectorAll('#invTableBody tr'));
 		if (productRows.length === 0) {
 			this.showMessage('Please add products to calculate', 'warning');
+			return;
+		}
+
+		const selectedEmployees = this.getSelectedEmployees();
+		if (!selectedEmployees.length) {
+			this.showMessage('Please select delivery employee', 'warning');
 			return;
 		}
 
@@ -718,6 +879,10 @@ const DeliveryModule = {
 		});
 
 		const payload = {
+			employeeIds: selectedEmployees.map(emp => emp.id),
+			employeeNames: selectedEmployees.map(emp => emp.name),
+			employeeId: selectedEmployees[0]?.id || '',
+			employeeName: selectedEmployees[0]?.name || '',
 			name: `${customerName}, ${now.toLocaleDateString()}`,
 			date: now.toISOString(),
 			sales: sales.toString(),
@@ -734,9 +899,15 @@ const DeliveryModule = {
 		try {
 			if (this.editingRecord?.id) {
 				await DB.update('history', { ...payload, id: this.editingRecord.id });
+				for (const emp of selectedEmployees) {
+					await this.upsertAttendance(emp.id, emp.name, payload.date, this.editingRecord.id);
+				}
 				this.showMessage('Calculation Updated Successfully!', 'success');
 			} else {
 				const historyId = await DB.add('history', payload);
+				for (const emp of selectedEmployees) {
+					await this.upsertAttendance(emp.id, emp.name, payload.date, historyId);
+				}
 				await this.addCreditsFromDelivery({
 					historyId,
 					date: payload.date,
@@ -810,6 +981,11 @@ const DeliveryModule = {
 		(record.calculation || []).forEach(row => this.addProductRow(row));
 		(record.expenses || []).forEach(exp => this.addExpenseRow(exp));
 		(record.credit || []).forEach(cr => this.addCreditRow(cr));
+
+		const list = document.getElementById('deliveryEmployeeList');
+		if (list) list.innerHTML = '';
+		const employeeIds = Array.isArray(record.employeeIds) ? record.employeeIds : (record.employeeId ? [record.employeeId] : []);
+		employeeIds.forEach(empId => this.addEmployeeSelectRow(empId));
 
 		const cashDetail = record.cashDetail || [];
 		cashDetail.forEach(detail => {

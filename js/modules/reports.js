@@ -80,7 +80,7 @@ const ReportsModule = {
 				</div>
 				<div class="month-content">
 					<div style="overflow-x: auto;">
-						<table style="width: 100%; font-size: 13px;">
+						<table class="table">
 							<thead>
 								<tr>
 									<th>Year</th>
@@ -116,22 +116,31 @@ const ReportsModule = {
 					</div>
 					<div class="month-content ${collapsedClass}">
 						<div style="overflow-x: auto;">
-							<table style="width: 100%; font-size: 13px;">
+							<table class="table">
 								<thead>
 									<tr>
-										<th>Customer & Date</th>
+										<th>Customer</th>
+										<th>Date</th>
 										<th>Sales (৳)</th>
 										<th>Net (৳)</th>
-										<th>View</th>
+										<th style="width: 40px;">View</th>
 									</tr>
 								</thead>
 								<tbody>
 									${group.deliveries.map(item => `
 										<tr>
-											<td>${item.data.name || ''}</td>
+											<td>${(item.data.name || '').split(',')[0] || ''}</td>
+											<td>${new Date(item.data.date).toLocaleDateString()}</td>
 											<td>৳${Math.round(parseFloat(item.data.sales) || 0)}</td>
 											<td>৳${Math.round(parseFloat(item.data.net) || 0)}</td>
-											<td><button class="btn btn-primary btn-small" onclick="viewCalculation(${item.index})">View</button></td>
+											<td style="text-align:center; width: 40px;">
+												<button class="btn btn-ghost btn-small icon-only" aria-label="View" title="View" onclick="viewCalculation(${item.index})">
+													<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+														<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
+														<circle cx="12" cy="12" r="3" />
+													</svg>
+												</button>
+											</td>
 										</tr>
 									`).join('')}
 								</tbody>
