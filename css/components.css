@@ -540,6 +540,58 @@
     flex: 1;
 }
 
+/* Dashboard styles */
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dashboard-header h2 {
+    margin: 0;
+}
+
+.dashboard-sub {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.dashboard-date {
+    font-size: 12px;
+    color: var(--muted);
+    background: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.kpi-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card .summary-value {
+    font-size: 22px;
+}
+
+.kpi-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    padding: 10px 12px;
+}
+
+.dashboard-table thead th {
+    background: #f8fafc;
+    font-weight: 700;
+}
+
 .credit-filter-bar .filter-group label {
     font-size: 12px;
     color: #6c757d;

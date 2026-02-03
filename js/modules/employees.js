@@ -144,6 +144,38 @@ const EmployeesModule = {
             this.repayments = await DB.getAll('repayments') || [];
             this.attendance = await DB.getAll('attendance') || [];
 
+            // Calculate pending salaries for current month
+            const monthKey = new Date().toISOString().slice(0, 7);
+            let pendingTotal = 0;
+            this.employees.forEach(emp => {
+                const salaryType = (emp.salaryType || 'Daily').toLowerCase();
+                const salaryRate = this.parseNumber(emp.salary) || 0;
+
+                const workingDays = (this.attendance || [])
+                    .filter(record => String(record.employeeId) === String(emp.id))
+                    .filter(record => record.date && record.date.startsWith(monthKey))
+                    .filter(record => record.status === 'present' || record.present === true)
+                    .length;
+
+                const salaryTotal = salaryType === 'daily' ? (workingDays * salaryRate) : salaryRate;
+
+                const totalCash = (this.advances || [])
+                    .filter(r => String(r.employeeId) === String(emp.id))
+                    .reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
+
+                const totalProduct = (this.productAdvances || [])
+                    .filter(r => String(r.employeeId) === String(emp.id))
+                    .reduce((sum, row) => sum + this.parseNumber(row.totalValue), 0);
+
+                const remaining = salaryTotal - (totalCash + totalProduct);
+                if (remaining > 0) pendingTotal += remaining;
+            });
+
+            const pendingEl = document.getElementById('pendingSalaries');
+            if (pendingEl) {
+                pendingEl.textContent = `৳${this.formatCurrency(pendingTotal)}`;
+            }
+
             this.renderEmployeeCards(presentSet);
         } catch (error) {
             console.error('Error loading employee data:', error);
