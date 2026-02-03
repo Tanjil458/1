@@ -40,12 +40,12 @@ const EmployeesModule = {
             </div>
 
             <div class="card attendance-button-card">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;">
                     <div>
                         <div style="font-weight:700; font-size:16px;">Attendance Sheet</div>
                         <div id="attendanceButtonSub" style="color:var(--muted); font-size:13px; margin-top:6px;"></div>
                     </div>
-                    <div>
+                    <div style="margin-left:auto; display:flex; align-items:center;">
                         <button class="btn btn-primary btn-attendance" id="openAttendanceSheet">📅 Open Sheet</button>
                     </div>
                 </div>

@@ -384,17 +384,26 @@
     color: var(--success);
 }
 
-/* Friday highlight (medium) */
+/* Friday highlight (stronger) */
 .row-friday {
-    background: linear-gradient(90deg, rgba(250, 243, 215, 0.6), rgba(255,255,255,0.6));
-    border-left: 4px solid rgba(245, 158, 11, 0.14);
+    background: linear-gradient(90deg, rgba(255,244,229,0.95), rgba(255,255,255,0.95));
+    border-left: 6px solid rgba(245, 158, 11, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(245,158,11,0.04);
+    transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
 }
 
-/* Today row highlight (medium) */
+/* Today row highlight (stronger) */
 .row-today {
-    background: linear-gradient(90deg, rgba(99,102,241,0.12), rgba(255,255,255,0.02));
-    border-left: 4px solid rgba(99,102,241,0.18);
-    box-shadow: inset 0 1px 0 rgba(99,102,241,0.02);
+    background: linear-gradient(90deg, rgba(59,130,246,0.16), rgba(255,255,255,0.04));
+    border-left: 6px solid rgba(59,130,246,0.28);
+    box-shadow: 0 6px 18px rgba(99,102,241,0.06);
+    transform: translateY(-1px);
+    transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+
+/* Subtle row hover to emphasize focus */
+.attendance-month-table tbody tr:hover:not(.row-selected) {
+    background: rgba(15,23,42,0.02);
 }
 
 /* Make date & day columns sticky for easy scanning */
@@ -457,9 +466,32 @@
 }
 
 .attendance-toggle.present {
-    background: rgba(34,197,94,0.16);
-    color: #16a34a;
-    border-color: rgba(16,185,129,0.12);
+    background: rgba(34,197,94,0.26);
+    color: #166534;
+    border-color: rgba(16,185,129,0.18);
+    box-shadow: 0 4px 14px rgba(34,197,94,0.06);
+    transform: translateY(-1px);
+}
+
+.row-selected {
+    outline: 3px solid rgba(59,130,246,0.16);
+    box-shadow: inset 0 0 0 1px rgba(59,130,246,0.08), 0 8px 24px rgba(59,130,246,0.04);
+}
+
+/* Attendance summary table */
+.attendance-summary-table th,
+.attendance-summary-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.attendance-summary-table thead th {
+    background: #fafafa;
+    font-weight: 700;
+}
+
+.attendance-summary-table td:last-child {
+    text-align: right;
 }
 
 

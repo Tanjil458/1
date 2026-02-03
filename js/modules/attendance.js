@@ -47,6 +47,21 @@ const AttendanceModule = {
 							<tbody></tbody>
 						</table>
 					</div>
+
+			<div class="card" style="margin-top:12px;">
+				<div class="card-header">
+					<h4>Monthly Summary</h4>
+				</div>
+				<div style="overflow:auto;">
+					<table class="table attendance-summary-table" id="attendanceSummaryTable">
+						<thead>
+							<tr>
+								<th style="min-width:200px;">Employee</th>
+								<th style="min-width:120px; text-align:right;">Working Days</th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
 				</div>
 			</section>
 		`;
@@ -204,6 +219,28 @@ const AttendanceModule = {
 					sessionStorage.removeItem('selectedAttendanceDate');
 				}
 			} catch (e) {}
+
+		// Render summary table with working days per employee
+		try {
+			const summaryTbody = document.querySelector('#attendanceSummaryTable tbody');
+			if (summaryTbody) {
+				const totals = {};
+				this.employees.forEach(emp => totals[emp.id] = 0);
+				Object.keys(attendanceByDate).forEach(date => {
+					Object.keys(attendanceByDate[date] || {}).forEach(empId => {
+						totals[empId] = (totals[empId] || 0) + 1;
+					});
+				});
+				summaryTbody.innerHTML = this.employees.map(emp => `
+					<tr>
+						<td>${emp.name}</td>
+						<td style="text-align:right; font-weight:700;">${totals[emp.id] || 0}</td>
+					</tr>
+				`).join('');
+			}
+		} catch (err) {
+			console.error('Failed to render attendance summary:', err);
+		}
 		});
 	},
 
