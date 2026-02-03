@@ -39,14 +39,15 @@ const EmployeesModule = {
                 </div>
             </div>
 
-            <div class="card">
-                <h3>Quick Actions</h3>
-                <div class="filters">
-                    <button class="btn btn-primary" onclick="EmployeesModule.addEmployee()">Add Employee</button>
-                    <button class="btn btn-secondary" onclick="EmployeesModule.viewList()">View List</button>
-                    <button class="btn btn-secondary" onclick="EmployeesModule.markAttendance()">Attendance</button>
-                    <button class="btn btn-secondary" onclick="EmployeesModule.salaryReport()">Salary Report</button>
-                    <button class="btn btn-secondary" onclick="EmployeesModule.manageAdvances()">Advances</button>
+            <div class="card attendance-button-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div>
+                        <div style="font-weight:700; font-size:16px;">Attendance Sheet</div>
+                        <div id="attendanceButtonSub" style="color:var(--muted); font-size:13px; margin-top:6px;"></div>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary btn-attendance" id="openAttendanceSheet">📅 Open Sheet</button>
+                    </div>
                 </div>
             </div>
 
@@ -112,8 +113,13 @@ const EmployeesModule = {
             </div>
         `;
 
-        this.loadEmployeeData();
-        this.bindCardEvents();
+        // Load employees first, then bind quick attendance UI and regular card events
+        this.loadEmployeeData().then(() => {
+            this.bindQuickAttendanceEvents();
+            this.renderQuickAttendance();
+            this.bindAttendanceButton();
+            this.bindCardEvents();
+        });
     },
 
     async loadEmployeeData() {
@@ -247,6 +253,115 @@ const EmployeesModule = {
         const closeDetailsFooter = document.getElementById('closeEmployeeDetailsFooter');
         if (closeDetails) closeDetails.addEventListener('click', () => this.closeDetailsModal());
         if (closeDetailsFooter) closeDetailsFooter.addEventListener('click', () => this.closeDetailsModal());
+    },
+
+    bindAttendanceButton() {
+        const btn = document.getElementById('openAttendanceSheet');
+        const sub = document.getElementById('attendanceButtonSub');
+        const now = new Date();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const monthKey = `${yyyy}-${mm}`;
+        const todayKey = `${yyyy}-${mm}-${dd}`;
+        if (sub) {
+            const monthName = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+            sub.textContent = `${monthName} • ${dd}/${mm}/${yyyy}`;
+        }
+        if (btn) {
+            btn.addEventListener('click', () => {
+                try { sessionStorage.setItem('selectedAttendanceMonth', monthKey); sessionStorage.setItem('selectedAttendanceDate', todayKey); } catch (e) {}
+                App.navigateTo('attendancePage');
+            });
+        }
+    },
+
+    bindQuickAttendanceEvents() {
+        const monthInput = document.getElementById('quickAttendanceMonth');
+        const refreshBtn = document.getElementById('quickAttendanceRefresh');
+        const table = document.getElementById('quickAttendanceTable');
+
+        if (monthInput) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            monthInput.addEventListener('change', () => this.renderQuickAttendance());
+        }
+        if (refreshBtn) refreshBtn.addEventListener('click', () => this.renderQuickAttendance());
+
+        if (table) {
+            table.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                if (!row) return;
+                const date = row.dataset.date;
+                if (!date) return;
+                // navigate to Attendance page and set a temporary selected date
+                try { sessionStorage.setItem('selectedAttendanceDate', date); } catch (e) {}
+                App.navigateTo('attendancePage');
+            });
+        }
+    },
+
+    async renderQuickAttendance() {
+        const monthInput = document.getElementById('quickAttendanceMonth');
+        const table = document.getElementById('quickAttendanceTable');
+        if (!monthInput || !table) return;
+
+        const monthKey = monthInput.value || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2,'0')}`;
+        const [yearStr, monthStr] = monthKey.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const daysInMonth = new Date(year, month, 0).getDate();
+
+        let attendance = [];
+        try {
+            attendance = await DB.getAll('attendance') || [];
+        } catch (err) {
+            console.error('Failed to load attendance records:', err);
+            attendance = [];
+        }
+
+        const monthRecords = (attendance || []).filter(r => r.date && r.date.startsWith(monthKey));
+        const attendanceByDate = {};
+        monthRecords.forEach(r => {
+            attendanceByDate[r.date] = attendanceByDate[r.date] || [];
+            attendanceByDate[r.date].push(r);
+        });
+
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dd = String(d).padStart(2, '0');
+            const dateKey = `${yearStr}-${String(month).padStart(2,'0')}-${dd}`;
+            const dateObj = new Date(dateKey);
+            const dayShort = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
+            const presentCount = (attendanceByDate[dateKey] || []).length;
+            const tr = document.createElement('tr');
+            tr.dataset.date = dateKey;
+            // highlight Friday row
+            if (dateObj.getDay() === 5) tr.classList.add('row-friday');
+            // highlight today row
+            const todayKey = new Date().toISOString().slice(0,10);
+            if (dateKey === todayKey) tr.classList.add('row-today');
+
+            // format date as dd/mm/yyyy
+            const mm = String(month).padStart(2,'0');
+            const dateDisplay = `${dd}/${mm}/${yearStr}`;
+
+            tr.innerHTML = `
+                <td>${dateDisplay}</td>
+                <td>${dayShort}</td>
+                <td class="present-count">${presentCount} / ${this.employees.length}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // update header label
+        const label = document.getElementById('quickAttendanceMonthLabel');
+        if (label) {
+            const monthName = new Date(year, month-1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+            label.textContent = monthName;
+        }
     },
 
     getEmployeeById(employeeId) {
