@@ -201,7 +201,8 @@ const DeliveryModule = {
 					<div class="modal-body">
 						<div class="form-group">
 							<label class="form-label">Customer</label>
-							<input type="text" id="customerNameInput" class="form-input" placeholder="Enter name" />
+							<input type="text" id="customerNameInput" class="form-input" placeholder="Enter name" list="customerAreaList" />
+							<datalist id="customerAreaList"></datalist>
 						</div>
 					</div>
 					<div class="modal-actions">
@@ -324,6 +325,7 @@ const DeliveryModule = {
 			this.areas = areas || [];
 			this.customers = customers || [];
 			this.populateCreditAreas();
+			this.populateCustomerAreaList();
 		} catch (error) {
 			console.error('Error loading credit sources:', error);
 		}
@@ -464,6 +466,21 @@ const DeliveryModule = {
 			areaSelect.appendChild(option);
 		});
 		areaSelect.value = currentValue;
+	},
+
+	populateCustomerAreaList() {
+		const dataList = document.getElementById('customerAreaList');
+		if (!dataList) return;
+		dataList.innerHTML = '';
+		const uniqueAreas = new Set();
+		this.areas.forEach(area => {
+			const name = (area?.name || '').trim();
+			if (!name || uniqueAreas.has(name)) return;
+			uniqueAreas.add(name);
+			const option = document.createElement('option');
+			option.value = name;
+			dataList.appendChild(option);
+		});
 	},
 
 	handleCreditAreaChange() {
@@ -1009,6 +1026,7 @@ const DeliveryModule = {
 	openCustomerModal(defaultName = '') {
 		const modal = document.getElementById('customerModal');
 		const input = document.getElementById('customerNameInput');
+		this.populateCustomerAreaList();
 		if (input) input.value = defaultName;
 		if (modal) modal.classList.add('show');
 		if (input) input.focus();

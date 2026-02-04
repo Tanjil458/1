@@ -370,6 +370,22 @@ const CreditsModule = {
 				this.openDetailsModal(index);
 			});
 		});
+
+		const pendingId = (window.App && window.App.pendingCreditId) ? window.App.pendingCreditId : window.pendingCreditId;
+		if (pendingId !== undefined && pendingId !== null && pendingId !== '') {
+			if (window.App) {
+				window.App.pendingCreditId = null;
+			}
+			window.pendingCreditId = null;
+			this.openDetailsById(pendingId);
+		}
+	},
+
+	openDetailsById(creditId) {
+		const index = this.credits.findIndex(credit => String(credit.id) === String(creditId));
+		if (index >= 0) {
+			this.openDetailsModal(index);
+		}
 	},
 
 	initializeMonthFilter() {

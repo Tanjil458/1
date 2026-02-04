@@ -102,7 +102,7 @@ const DashboardModule = {
 
             <div class="card">
                 <div class="card-header">
-                    <h3>Pending Credits (Top 5)</h3>
+                    <h3>Pending Credits</h3>
                 </div>
                 <div style="overflow:auto;">
                     <table class="table dashboard-table">
@@ -250,8 +250,7 @@ const DashboardModule = {
 
         const rows = (credits || [])
             .slice()
-            .sort((a, b) => this.parseNumber(b.balance) - this.parseNumber(a.balance))
-            .slice(0, 5);
+            .sort((a, b) => this.parseNumber(b.balance) - this.parseNumber(a.balance));
 
         if (!rows.length) {
             tbody.innerHTML = `
@@ -267,13 +266,24 @@ const DashboardModule = {
             const balance = this.formatCurrency(this.parseNumber(row.balance));
             const since = this.formatDate(row.credit_date || row.createdAt);
             return `
-                <tr>
+                <tr data-credit-id="${row.id}">
                     <td>${name}</td>
                     <td>৳${balance}</td>
                     <td>${since}</td>
                 </tr>
             `;
         }).join('');
+
+        tbody.querySelectorAll('[data-credit-id]').forEach(row => {
+            row.addEventListener('click', () => {
+                const creditId = row.dataset.creditId;
+                if (!creditId) return;
+                if (window.App) {
+                    window.App.pendingCreditId = creditId;
+                    window.App.navigateTo('creditsPage');
+                }
+            });
+        });
     },
 
     setText(id, value) {
