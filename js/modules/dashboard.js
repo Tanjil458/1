@@ -92,7 +92,7 @@ const DashboardModule = {
                                 <th>Customer</th>
                                 <th>Sales</th>
                                 <th>Net</th>
-                                <th>Delivery By</th>
+                                <th style="width: 40px;">Edit</th>
                             </tr>
                         </thead>
                         <tbody id="recentDeliveryBody"></tbody>
@@ -179,6 +179,7 @@ const DashboardModule = {
         const tbody = document.getElementById('recentDeliveryBody');
         if (!tbody) return;
 
+        this.historyCache = history || [];
         const rows = (history || [])
             .slice()
             .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -193,22 +194,54 @@ const DashboardModule = {
             return;
         }
 
-        tbody.innerHTML = rows.map(row => {
+        tbody.innerHTML = rows.map((row, index) => {
             const customer = (row.name || '').split(',')[0] || '—';
             const date = this.formatDate(row.date);
             const sales = this.formatCurrency(this.parseNumber(row.sales));
             const net = this.formatCurrency(this.parseNumber(row.net));
-            const employee = row.employeeName || row.employeeNames?.[0] || '—';
+            const canEdit = index < 3;
             return `
                 <tr>
                     <td>${date}</td>
                     <td>${customer}</td>
                     <td>৳${sales}</td>
                     <td>৳${net}</td>
-                    <td>${employee}</td>
+                    <td style="text-align:center; width: 40px;">
+                        ${canEdit ? `
+                            <button class="btn btn-ghost btn-small icon-only" aria-label="Edit" title="Edit" data-edit-id="${row.id}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                                </svg>
+                            </button>
+                        ` : ''}
+                    </td>
                 </tr>
             `;
         }).join('');
+
+        tbody.querySelectorAll('[data-edit-id]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const recordId = btn.dataset.editId;
+                const record = this.historyCache.find(item => String(item.id) === String(recordId));
+                this.loadDeliveryForEdit(record);
+            });
+        });
+    },
+
+    loadDeliveryForEdit(record) {
+        if (!record) return;
+        if (window.DeliveryModule) {
+            window.DeliveryModule.editingRecord = record;
+        }
+        if (window.App) {
+            window.App.navigateTo('deliveryPage');
+        }
+        setTimeout(() => {
+            if (window.DeliveryModule && window.DeliveryModule.loadForEdit) {
+                window.DeliveryModule.loadForEdit(record);
+            }
+        }, 150);
     },
 
     renderPendingCredits(credits) {
