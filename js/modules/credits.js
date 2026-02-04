@@ -314,7 +314,7 @@ const CreditsModule = {
 
 			const customerInfo = this.getCustomerInfo(credit);
 			const lastPayment = this.getLastPaymentDate(credit);
-			const creditDate = credit.credit_date ? new Date(credit.credit_date).toLocaleDateString() : '—';
+			const creditDate = credit.credit_date ? this.formatDate(new Date(credit.credit_date)) : '—';
 			const areaLabel = customerInfo.area;
 			const notesText = credit.notes ? credit.notes.trim() : '';
 

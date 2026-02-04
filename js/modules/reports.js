@@ -130,7 +130,7 @@ const ReportsModule = {
 									${group.deliveries.map(item => `
 										<tr>
 											<td>${(item.data.name || '').split(',')[0] || ''}</td>
-											<td>${new Date(item.data.date).toLocaleDateString()}</td>
+											<td>${this.formatDate(new Date(item.data.date))}</td>
 											<td>৳${Math.round(parseFloat(item.data.sales) || 0)}</td>
 											<td>৳${Math.round(parseFloat(item.data.net) || 0)}</td>
 											<td style="text-align:center; width: 40px;">
@@ -157,6 +157,13 @@ const ReportsModule = {
 
 	refresh() {
 		this.renderMonthlyReport();
+	},
+
+	formatDate(dateObj) {
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const yyyy = dateObj.getFullYear();
+		return `${dd}/${mm}/${yyyy}`;
 	},
 
 	destroy() {

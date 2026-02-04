@@ -883,7 +883,7 @@ const DeliveryModule = {
 			employeeNames: selectedEmployees.map(emp => emp.name),
 			employeeId: selectedEmployees[0]?.id || '',
 			employeeName: selectedEmployees[0]?.name || '',
-			name: `${customerName}, ${now.toLocaleDateString()}`,
+			name: `${customerName}, ${this.formatDate(now)}`,
 			date: now.toISOString(),
 			sales: sales.toString(),
 			cash: cash.toString(),
@@ -965,6 +965,13 @@ const DeliveryModule = {
 
 		this.addProductRow();
 		this.recalculate();
+	},
+
+	formatDate(dateObj) {
+		const dd = String(dateObj.getDate()).padStart(2, '0');
+		const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const yyyy = dateObj.getFullYear();
+		return `${dd}/${mm}/${yyyy}`;
 	},
 
 	loadForEdit(record) {

@@ -165,7 +165,7 @@ const DashboardModule = {
             this.setText('totalCustomers', (customers || []).length.toString());
             this.setText('totalAreas', (areas || []).length.toString());
 
-            const dateLabel = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dateLabel = this.formatDate(new Date());
             this.setText('dashboardDate', dateLabel);
 
             this.renderRecentDeliveries(history || []);

@@ -580,7 +580,7 @@ const EmployeesModule = {
             <div style="text-align:center; margin-bottom: 12px;">
                 <div style="font-size: 18px; font-weight: 700;">${employee.name} <span style="font-size: 12px; font-weight: 400; color:#6b7280;">(${employee.role || '—'})</span></div>
                 <div style="font-size: 12px; color:#6b7280; margin-top: 4px;">${employee.mobile || '—'}</div>
-                <div style="font-size: 12px; color:#6b7280; margin-top: 2px;">${new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</div>
+                <div style="font-size: 12px; color:#6b7280; margin-top: 2px;">${this.formatDate(new Date())}</div>
             </div>
 
             <h4 style="margin: 6px 0;">Recent Advances</h4>
@@ -662,7 +662,7 @@ const EmployeesModule = {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
+        return `${dd}/${mm}/${yyyy}`;
     },
 
     formatCurrency(value) {
