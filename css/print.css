@@ -1,0 +1,424 @@
+/* Print styles (moved from style.css and components.css) */
+@media print {
+    @page { size: A4; margin: 10mm 12mm; }
+
+    html, body { height: auto !important; overflow: visible !important; }
+    body { background: white; padding: 0; margin: 0; }
+
+    /* Hide everything by default (visibility keeps layout predictable) */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Keep the View modal printable */
+    #viewModal,
+    #viewModal * {
+        visibility: visible !important;
+    }
+
+    /* Hide controls inside the modal */
+    .modal-actions,
+    button,
+    .btn,
+    input,
+    select {
+        display: none !important;
+    }
+
+    /* Only show the View modal for printing */
+    #viewModal.modal.show {
+        display: block !important;
+        position: static;
+        background: transparent;
+        padding: 0;
+    }
+
+    #viewModal {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+    }
+
+    #viewModal {
+        page-break-before: auto !important;
+        break-before: auto !important;
+    }
+
+    /* Hide other modals */
+    #modal,
+    #expenseModal {
+        display: none !important;
+    }
+
+    /* Ensure the view modal content uses full printable width (override inline styles) */
+    #viewModal.modal.show .modal-content {
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+    }
+
+    /* Constrain print document to A4 printable area and prevent overflow */
+    .print-document {
+        width: calc(210mm - 24mm); /* A4 width minus left+right margins (12mm each) */
+        max-width: calc(210mm - 24mm);
+        margin: 0 auto;
+        box-sizing: border-box;
+        font-size: 9px;
+        line-height: 1.05;
+        page-break-inside: avoid;
+        overflow: visible;
+    }
+
+    /* Ensure table headers repeat on multipage and use fixed layout */
+    .print-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 9px;
+        margin: 0;
+        word-wrap: break-word;
+    }
+    .print-table thead { display: table-header-group; }
+
+    /* Alignment helper classes */
+    .print-table th.col-product,
+    .print-table td.col-product {
+        text-align: center; /* center product name horizontally */
+    }
+
+    .print-table th.col-num,
+    .print-table td.col-num {
+        text-align: right;  /* numeric columns right aligned */
+    }
+
+    .print-table td.col-total {
+        text-align: right;
+        font-weight: 700;
+    }
+
+    /* Center NET total and make it prominent */
+    .print-net {
+        margin-top: 8px;
+        text-align: right;   /* centered as in screenshot */
+        font-size: 14px;
+        font-weight: 900;
+        color: #c0392b;
+        padding: 4px 0;
+    }
+
+    .print-net .net-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #c0392b;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    /* Subtle row separators, no heavy outer borders */
+    .print-table thead th,
+    .print-table tbody td {
+        padding: 3px 6px;
+        border: none;
+        border-bottom: 1px solid #e6e6e6;
+        vertical-align: middle;
+    }
+
+    /* Bottom three-column sections - no heavy borders */
+    .print-three-column {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 10px;
+        page-break-inside: avoid;
+    }
+
+    .print-section-third {
+        flex: 1;
+        border: 1px solid #111;
+        padding: 6px;
+        box-sizing: border-box;
+        background: #fff;
+    }
+
+    .print-section-third h3 {
+        margin: 0 0 6px 0;
+        padding: 0 0 4px 0;
+        font-size: 10px;
+        font-weight: 700;
+        background: transparent;
+    }
+
+    .print-section-third table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8.5px;
+    }
+
+    .print-section-third table th,
+    .print-section-third table td {
+        border: none;               /* remove cell borders */
+        padding: 4px 6px;
+        text-align: center;
+    }
+
+    /* Summary cleaned up */
+    .print-summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9px;
+    }
+
+    .print-summary-table td {
+        padding: 4px 6px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .print-summary-table td:first-child {
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .print-summary-table td:last-child {
+        text-align: right;
+        font-weight: 700;
+    }
+
+    .print-summary-table tr:last-child td {
+        border-bottom: none;
+        border-top: 1px solid #111;
+        font-weight: 900;
+        font-size: 10px;
+        padding-top: 6px;
+    }
+
+    /* Keep NET visible and more prominent */
+    .print-net {
+        padding: 10px;
+        text-align: right;
+        font-size: 14px;
+        font-weight: 900;    /* stronger */
+        margin-top: 15px;
+        border-top: none;    /* removed heavy border */
+        background: transparent;
+        color: #c0392b;      /* red accent */
+    }
+
+    /* Remove screen colors */
+    .col-green,
+    .col-red {
+        background: transparent !important;
+    }
+
+    /* Header and document sizing tweaks */
+    .print-header h2 { font-size: 12px; margin-bottom: 2px; }
+    .print-header p { font-size: 9px; margin: 0; }
+
+    /* Table header: medium intensity background */
+    .print-table thead th {
+        background: #ffffc5;
+        color: #111;
+        padding: 4px 6px;
+        font-weight: 700;
+        font-size: 9px;
+        border: none;
+    }
+
+    /* Rows: subtle separators, no heavy cell borders */
+    .print-table tbody td {
+        border: none;
+        border-bottom: 1px solid #dcdcdc;
+        padding: 3px 6px;
+        font-size: 9px;
+        vertical-align: middle;
+    }
+
+    /* Column alignment classes */
+    .print-table th.col-product,
+    .print-table td.col-product { text-align: center; } /* center product name */
+    .print-table th.col-num,
+    .print-table td.col-num { text-align: right; }       /* right align numbers */
+    .print-table td.col-total { text-align: right; font-weight: 700; }
+
+    /* Bottom three columns — keep thin border like image */
+    .print-three-column { gap: 8px; margin-top: 8px; }
+    .print-section-third {
+        border: 1px solid #111;
+        padding: 6px;
+        box-sizing: border-box;
+        background: #fff;
+    }
+    .print-section-third h3 { margin: 0 0 6px 0; padding: 0 0 4px 0; font-size: 10px; }
+
+    /* NET total: right aligned with small red dot preceding it */
+    .print-net {
+        text-align: right;
+        font-size: 12px;
+        font-weight: 900;
+        color: #c0392b;
+        padding-top: 6px;
+    }
+    .print-net .net-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background: #c0392b;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    /* Ensure the print content width fits A4 and no overflow */
+    .print-document {
+        width: calc(210mm - 24mm);
+        max-width: calc(210mm - 24mm);
+        margin: 0 auto;
+        box-sizing: border-box;
+        font-size: 9px;
+        line-height: 1.05;
+        page-break-inside: avoid;
+    }
+
+    /* Print header that matches the provided image */
+    .print-header {
+        text-align: center;
+        margin: 6px 0 8px 0;
+        padding: 0;
+    }
+
+    /* Increased title and subtitle sizes */
+    .print-header h2 {
+        font-size: 24px !important;   /* was 22px / 11px earlier */
+        margin: 0;
+        font-weight: 900;
+        letter-spacing: 0.6px;
+    }
+
+    .print-header p {
+        font-size: 15px !important;   /* was 13px / 9px earlier */
+        margin: 4px 0 6px 0;
+        color: #000;
+    }
+
+    /* Make preview header show a full-width, slightly thicker underline */
+    .print-box .print-header {
+        position: relative;
+        padding-bottom: 8px; /* space for the underline */
+    }
+    .print-box .print-header::after {
+        content: "";
+        display: block;
+        height: 3px;            /* slightly thicker */
+        background: #000;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    /* Ensure printed header also gets the same full-width, slightly thicker underline */
+    .print-header {
+        position: relative;
+        padding-bottom: 8px;
+    }
+    .print-header::after {
+        content: "";
+        display: block;
+        height: 3px;          /* slightly thicker line for print */
+        background: #000;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    #viewModal .modal-content .print-header {
+        position: relative;
+        padding-bottom: 8px;
+        border-bottom: 3px solid #000; /* ensure underline appears in preview */
+    }
+    #viewModal .modal-content .print-header::after {
+        content: "";
+        display: block;
+        height: 3px;
+        background: #000;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    /* Also make sure printed header has a clear, slightly thicker underline */
+    .print-header {
+        position: relative;
+        padding-bottom: 8px !important;
+        border-bottom: 3px solid #000 !important;
+    }
+    .print-header::after {
+        height: 3px;
+        background: #000;
+    }
+
+    /* Final print size adjustments: increase base and key headings by ~2px */
+    .print-document {
+        font-size: 11px !important;      /* increased from 9px */
+        line-height: 1.15 !important;
+    }
+    .print-table,
+    .print-summary-table,
+    .print-section-third table {
+        font-size: 12px !important;      /* increase table text */
+    }
+    .print-table thead th {
+        font-size: 14px !important;
+    }
+
+    /* Header larger */
+    .print-header h2 {
+        font-size: 26px !important;      /* bumped from 24px */
+    }
+    .print-header p {
+        font-size: 17px !important;      /* bumped from 15px */
+    }
+
+    /* NET size slightly larger to stay proportional */
+    .print-net {
+        font-size: 16px !important;
+    }
+
+    /* Increase print sizes by +1px */
+    .print-document {
+        font-size: 12px !important; /* was 11px */
+        line-height: 1.25 !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+    .print-table,
+    .print-summary-table,
+    .print-section-third table {
+        font-size: 12px !important; /* was 11px */
+    }
+    .print-table thead th {
+        font-size: 12px !important; /* was 11px */
+    }
+    .print-header h2 {
+        font-size: 27px !important; /* was 26px */
+    }
+    .print-header p {
+        font-size: 18px !important; /* was 17px */
+    }
+    .print-net {
+        font-size: 17px !important; /* was 16px */
+    }
+
+    /* Allow content to flow to first page instead of skipping it */
+    .print-document,
+    .print-three-column {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+    }
+}
+

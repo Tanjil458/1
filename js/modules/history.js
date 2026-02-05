@@ -257,6 +257,14 @@ const HistoryModule = {
 		return `${dd}/${mm}/${yyyy}`;
 	},
 
+
+
+
+
+
+
+
+
 	viewCalculation(index) {
 		const record = this.history[index];
 		if (!record) return;
@@ -274,8 +282,8 @@ const HistoryModule = {
 				<td class="col-num">${item.rc ?? ''}</td>
 				<td class="col-num">${item.rp ?? ''}</td>
 				<td class="col-num">${item.sold ?? ''}</td>
-				<td class="col-num">${item.price ?? ''}</td>
-				<td class="col-num col-total">${item.total ?? ''}</td>
+				<td class="col-num">৳${item.price ?? ''}</td>
+				<td class="col-total">৳${item.total ?? ''}</td>
 			</tr>
 		`).join('');
 
@@ -285,62 +293,51 @@ const HistoryModule = {
 				<tr>
 					<td class="col-product">${row.note}</td>
 					<td class="col-num">${row.qty}</td>
-					<td class="col-num col-total">${row.total}</td>
+					<td class="col-num">৳${row.total}</td>
 				</tr>
 			`).join('')
 			: `
 				<tr>
-					<td colspan="3" style="text-align:center; color:#6c757d;">No cash</td>
+					<td class="col-product" colspan="3" style="text-align:center; color:#6c757d;">No cash</td>
 				</tr>
 			`;
 
-		const expensesRows = (record.expenses || []);
+		const creditRows = (record.credit || []).map(credit => ({
+			...credit,
+			type: credit.type || 'বাকি ---'
+		}));
+		const expensesRows = [
+			...(record.expenses || []),
+			...creditRows
+		];
 		const expensesTable = expensesRows.length
 			? `
 				<table class="print-table">
 					<thead>
 						<tr>
-							<th>Expense Name</th>
+							<th class="col-product">Expense Name</th>
 							<th class="col-num">Amount (৳)</th>
 						</tr>
 					</thead>
 					<tbody>
-						${expensesRows.map(exp => `
-							<tr>
-								<td>${exp.name || ''}</td>
-								<td class="col-num col-total">${exp.amount ?? ''}</td>
-							</tr>
-						`).join('')}
+						${expensesRows.map(exp => {
+							const displayName = exp.type && exp.type !== 'Expense' ? `${exp.type}: ${exp.name || ''}` : (exp.name || '');
+							return `
+								<tr>
+									<td style="text-align:left">${displayName}</td>
+									<td class="col-num">৳${exp.amount ?? ''}</td>
+								</tr>
+							`;
+						}).join('')}
 					</tbody>
 				</table>
 			`
 			: `<p style="text-align:center; color:#6c757d;">No expenses</p>`;
 
-		const creditRows = (record.credit || []);
-		const creditTable = creditRows.length
-			? `
-				<table class="print-table">
-					<thead>
-						<tr>
-							<th>Customer</th>
-							<th class="col-num">Amount (৳)</th>
-						</tr>
-					</thead>
-					<tbody>
-						${creditRows.map(cr => `
-							<tr>
-								<td>${cr.name || ''}</td>
-								<td class="col-num col-total">${cr.amount ?? ''}</td>
-							</tr>
-						`).join('')}
-					</tbody>
-				</table>
-			`
-			: `<p style="text-align:center; color:#6c757d;">No credit</p>`;
-
 		const salesTotal = Math.round(parseFloat(record.sales || '0'));
 		const cashTotal = Math.round(parseFloat(record.cash || '0'));
 		const expenseTotal = Math.round(parseFloat(record.totalExpense || '0'));
+		const creditTotal = Math.round(parseFloat(record.totalCredit || '0'));
 		const netTotal = Math.round(parseFloat(record.net || '0'));
 
 		const viewContent = document.getElementById('viewContent');
@@ -350,9 +347,8 @@ const HistoryModule = {
 		viewContent.innerHTML = `
 			<div class="print-document">
 				<div class="print-header">
-					<h2>Calculation Details</h2>
-					<p>Customer & Date: ${customerName}, ${dateText}</p>
-					<div class="print-divider"></div>
+					<h2>মেসাস বৃষ্টি সাজঘর </h2>
+					<p> ${customerName}, ${dateText}</p>
 				</div>
 
 				<h3>Products & Sales</h3>
@@ -369,14 +365,14 @@ const HistoryModule = {
 					</colgroup>
 					<thead>
 						<tr>
-							<th>Product Name</th>
+							<th class="col-product">Product Name</th>
 							<th class="col-num">DC</th>
 							<th class="col-num">DP</th>
 							<th class="col-num">RC</th>
 							<th class="col-num">RP</th>
 							<th class="col-num">Sold</th>
 							<th class="col-num">Price</th>
-							<th class="col-num col-total">Total</th>
+							<th class="col-num">Total</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -384,15 +380,15 @@ const HistoryModule = {
 					</tbody>
 				</table>
 
-				<div class="view-grid print-three-column">
+					<div class="print-three-column">
 					<div class="print-section-third">
 						<h3>Cash Denominations</h3>
 						<table class="print-table">
 							<thead>
 								<tr>
-									<th>Note (৳)</th>
+										<th class="col-product">Note (৳)</th>
 									<th class="col-num">Qty</th>
-									<th class="col-num col-total">Total (৳)</th>
+										<th class="col-num">Total (৳)</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -405,28 +401,28 @@ const HistoryModule = {
 						${expensesTable}
 					</div>
 					<div class="print-section-third">
-						<h3>Credit (Unpaid)</h3>
-						${creditTable}
-					</div>
-					<div class="print-section-third">
 						<h3>Summary</h3>
 						<table class="print-summary-table">
 							<tbody>
 								<tr>
-									<td>Sales Total</td>
-									<td class="col-total">৳${salesTotal}</td>
+										<td>Sales Total:</td>
+										<td class="col-num">৳${salesTotal}</td>
 								</tr>
 								<tr>
-									<td>Cash Received</td>
-									<td class="col-total">৳${cashTotal}</td>
+										<td>Cash Received:</td>
+										<td class="col-num">৳${cashTotal}</td>
 								</tr>
 								<tr>
-									<td>Total Expenses</td>
-									<td class="col-total">৳${expenseTotal}</td>
+										<td>বাকি:</td>
+										<td class="col-num">৳${creditTotal}</td>
 								</tr>
 								<tr>
-									<td><strong>NET TOTAL</strong></td>
-									<td class="col-total"><strong>৳${netTotal}</strong></td>
+										<td>Total Expenses:</td>
+										<td class="col-num">৳${expenseTotal}</td>
+								</tr>
+								<tr>
+										<td>NET TOTAL:</td>
+										<td class="col-num">৳${netTotal}</td>
 								</tr>
 							</tbody>
 						</table>

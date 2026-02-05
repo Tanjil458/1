@@ -147,12 +147,19 @@ const DeliveryModule = {
 					</div>
 					<div class="modal-body">
 						<div class="form-group">
+							<label class="form-label">Type</label>
+							<select id="expenseType" class="form-input">
+								<option value="Expense">Expense</option>
+								<option value="Credit">Credit</option>
+							</select>
+						</div>
+						<div class="form-group">
 							<label class="form-label">Expense Name</label>
-							<input type="text" id="expenseNameInput" class="form-input" placeholder="Name" />
+							<input type="text" id="expenseName" class="form-input" placeholder="Enter expense name" />
 						</div>
 						<div class="form-group">
 							<label class="form-label">Amount</label>
-							<input type="number" id="expenseAmountInput" class="form-input" min="0" step="0.01" value="0" />
+							<input type="number" id="expenseAmount" class="form-input" min="0" step="0.01" value="0" />
 						</div>
 					</div>
 					<div class="modal-actions">
@@ -423,8 +430,10 @@ const DeliveryModule = {
 
 	openExpenseModal() {
 		const modal = document.getElementById('expenseModal');
-		const nameInput = document.getElementById('expenseNameInput');
-		const amountInput = document.getElementById('expenseAmountInput');
+		const typeInput = document.getElementById('expenseType');
+		const nameInput = document.getElementById('expenseName');
+		const amountInput = document.getElementById('expenseAmount');
+		if (typeInput) typeInput.value = 'Expense';
 		if (nameInput) nameInput.value = '';
 		if (amountInput) amountInput.value = '0';
 		if (modal) modal.classList.add('show');
@@ -546,8 +555,10 @@ const DeliveryModule = {
 	},
 
 	saveExpense() {
-		const nameInput = document.getElementById('expenseNameInput');
-		const amountInput = document.getElementById('expenseAmountInput');
+		const typeInput = document.getElementById('expenseType');
+		const nameInput = document.getElementById('expenseName');
+		const amountInput = document.getElementById('expenseAmount');
+		const type = typeInput ? typeInput.value : 'Expense';
 		const name = nameInput ? nameInput.value.trim() : '';
 		const amount = amountInput ? parseFloat(amountInput.value) : 0;
 
@@ -556,7 +567,7 @@ const DeliveryModule = {
 			return;
 		}
 
-		this.addExpenseRow({ name, amount });
+		this.addExpenseRow({ name, amount, type });
 		this.closeExpenseModal();
 		this.recalculate();
 	},
@@ -581,10 +592,16 @@ const DeliveryModule = {
 		const tbody = document.getElementById('expenseTableBody');
 		if (!tbody) return;
 
+		const type = data.type || 'Expense';
+		const name = data.name || '';
+		const displayName = type === 'Expense' ? name : `${type}: ${name}`;
+
 		const row = document.createElement('tr');
 		row.className = 'swipeable-row';
+		row.dataset.type = type;
+		row.dataset.name = name;
 		row.innerHTML = `
-			<td>${data.name || ''}</td>
+			<td>${displayName}</td>
 			<td><input type="number" class="expense-amount" min="0" step="0.01" value="${this.toNumberValue(data.amount)}" /></td>
 		`;
 
@@ -877,9 +894,10 @@ const DeliveryModule = {
 		});
 
 		const expenses = Array.from(document.querySelectorAll('#expenseTableBody tr')).map(row => {
-			const name = row.children[0]?.textContent || '';
+			const name = row.dataset.name || row.children[0]?.textContent || '';
+			const type = row.dataset.type || 'Expense';
 			const amount = this.toNumberValue(row.querySelector('.expense-amount')?.value);
-			return { name, amount };
+			return { name, amount, type };
 		});
 
 		const credit = Array.from(document.querySelectorAll('#creditTableBody tr')).map(row => {

@@ -483,6 +483,7 @@ const EmployeesModule = {
 
             App.showToast('Advance saved', 'success');
             this.closeAdvanceModal();
+            await this.loadEmployeeData();
         } catch (error) {
             console.error('Failed to save advance:', error);
             App.showToast('Failed to save advance', 'error');
