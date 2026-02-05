@@ -20,7 +20,25 @@ const App = {
         this.loadModules();
         this.showPage(this.state.currentPage);
         
+        // Wait for Firebase to be ready before syncing
+        if (window.FirebaseInitialized) {
+            this.onFirebaseReady();
+        } else {
+            window.addEventListener('firebaseReady', () => this.onFirebaseReady());
+        }
+        
         console.log('✅ App ready');
+    },
+
+    onFirebaseReady() {
+        console.log('📡 Firebase is ready, enabling sync features...');
+        
+        // Initialize sync status indicator after SyncModule loads
+        setTimeout(() => {
+            if (window.SyncModule) {
+                window.SyncModule.checkSyncStatus();
+            }
+        }, 1000);
     },
 
     setupNavigation() {
@@ -37,6 +55,50 @@ const App = {
             });
 
             overlay.addEventListener('click', () => this.closeSideNav());
+        }
+
+        // Sync button in header
+        const syncBtn = document.getElementById('syncBtn');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', async () => {
+                if (!window.SyncModule) {
+                    this.showToast('Sync module not loaded', 'error');
+                    return;
+                }
+
+                if (!window.SyncModule.syncEnabled) {
+                    this.showToast('Please sign in to sync', 'warning');
+                    // Navigate to settings
+                    this.navigateTo('settingsPage');
+                    return;
+                }
+
+                // Show loading state
+                const syncIcon = document.getElementById('syncIcon');
+                syncBtn.disabled = true;
+                window.SyncModule.updateSyncIndicator('syncing');
+                syncIcon.classList.add('spinning');
+                
+                try {
+                    await window.SyncModule.forceFullSync();
+                } catch (error) {
+                    console.error('Sync error:', error);
+                } finally {
+                    syncBtn.disabled = false;
+                    syncIcon.classList.remove('spinning');
+                    // Status will be updated by forceFullSync's finally block
+                }
+            });
+        }
+
+        // Notification button
+        const notificationBtn = document.getElementById('notificationBtn');
+        if (notificationBtn) {
+            notificationBtn.addEventListener('click', () => {
+                console.log('Notifications clicked');
+                // TODO: Implement notifications functionality
+                this.showToast('Notifications feature coming soon', 'info');
+            });
         }
 
         // Bottom navigation

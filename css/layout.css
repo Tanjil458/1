@@ -27,6 +27,12 @@
     height: 56px;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .brand {
     display: flex;
     align-items: center;

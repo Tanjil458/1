@@ -225,7 +225,23 @@ const DB = {
                 updatedAt: new Date().toISOString(),
                 synced: false
             });
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = async () => {
+                const id = request.result;
+                
+                // Trigger cloud sync
+                if (window.SyncModule?.syncEnabled) {
+                    setTimeout(() => {
+                        window.SyncModule.pushToCloud(storeName, { ...data, id });
+                        // Update sync indicator
+                        window.SyncModule.checkSyncStatus();
+                    }, 100);
+                } else if (window.SyncModule) {
+                    // Update indicator even when not syncing
+                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
+                }
+                
+                resolve(id);
+            };
             request.onerror = () => reject(request.error);
         });
     },
@@ -242,7 +258,21 @@ const DB = {
                 updatedAt: new Date().toISOString(),
                 synced: false
             });
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = async () => {
+                // Trigger cloud sync
+                if (window.SyncModule?.syncEnabled) {
+                    setTimeout(() => {
+                        window.SyncModule.pushToCloud(storeName, data);
+                        // Update sync indicator
+                        window.SyncModule.checkSyncStatus();
+                    }, 100);
+                } else if (window.SyncModule) {
+                    // Update indicator even when not syncing
+                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
+                }
+                
+                resolve(request.result);
+            };
             request.onerror = () => reject(request.error);
         });
     },
@@ -255,7 +285,21 @@ const DB = {
             const transaction = this.instance.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.delete(id);
-            request.onsuccess = () => resolve();
+            request.onsuccess = async () => {
+                // Trigger cloud sync (delete from cloud)
+                if (window.SyncModule?.syncEnabled) {
+                    setTimeout(() => {
+                        window.SyncModule.deleteFromCloud(storeName, id);
+                        // Update sync indicator
+                        window.SyncModule.checkSyncStatus();
+                    }, 100);
+                } else if (window.SyncModule) {
+                    // Update indicator even when not syncing
+                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
+                }
+                
+                resolve();
+            };
             request.onerror = () => reject(request.error);
         });
     },

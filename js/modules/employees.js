@@ -531,6 +531,10 @@ const EmployeesModule = {
         const employee = this.getEmployeeById(employeeId);
         if (!employee) return;
 
+        // Store employee ID and data for month filtering
+        this.currentEmployeeId = employeeId;
+        this.currentEmployee = employee;
+
         const [cashAdvances, productAdvances, repayments, attendance] = await Promise.all([
             DB.getAll('advances'),
             DB.getAll('productAdvances'),
@@ -538,18 +542,48 @@ const EmployeesModule = {
             DB.getAll('attendance')
         ]);
 
-        const cashRows = (cashAdvances || []).filter(row => String(row.employeeId) === String(employeeId));
-        const productRows = (productAdvances || []).filter(row => String(row.employeeId) === String(employeeId));
-        const repaymentRows = (repayments || []).filter(row => String(row.employeeId) === String(employeeId));
+        // Store data for re-rendering
+        this.currentEmployeeData = {
+            cashAdvances,
+            productAdvances,
+            repayments,
+            attendance
+        };
+
+        // Render with current month initially
+        this.renderEmployeeDetails();
+        modal.classList.add('show');
+    },
+
+    renderEmployeeDetails() {
+        const content = document.getElementById('employeeDetailsContent');
+        if (!content || !this.currentEmployee || !this.currentEmployeeData) return;
+
+        const employee = this.currentEmployee;
+        const employeeId = this.currentEmployeeId;
+        const { cashAdvances, productAdvances, repayments, attendance } = this.currentEmployeeData;
+
+        // Get selected month or default to current
+        const monthInput = document.getElementById('employeeDetailsMonth');
+        const monthKey = monthInput ? monthInput.value : new Date().toISOString().slice(0, 7);
+
+        // Filter data by selected month
+        const cashRows = (cashAdvances || [])
+            .filter(row => String(row.employeeId) === String(employeeId))
+            .filter(row => row.date && row.date.startsWith(monthKey));
+        const productRows = (productAdvances || [])
+            .filter(row => String(row.employeeId) === String(employeeId))
+            .filter(row => row.date && row.date.startsWith(monthKey));
+        const repaymentRows = (repayments || [])
+            .filter(row => String(row.employeeId) === String(employeeId))
+            .filter(row => row.date && row.date.startsWith(monthKey));
 
         const totalCash = cashRows.reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
         const totalProduct = productRows.reduce((sum, row) => sum + this.parseNumber(row.totalValue), 0);
         const totalRepayment = repaymentRows.reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
-        const outstanding = Math.max(totalCash + totalProduct - totalRepayment, 0);
 
         const salaryType = (employee.salaryType || 'Daily').toLowerCase();
         const salaryRate = this.parseNumber(employee.salary);
-        const monthKey = new Date().toISOString().slice(0, 7);
         const workingDays = (attendance || [])
             .filter(record => String(record.employeeId) === String(employeeId))
             .filter(record => record.date && record.date.startsWith(monthKey))
@@ -558,17 +592,15 @@ const EmployeesModule = {
         const salaryTotal = salaryType === 'daily' ? workingDays * salaryRate : salaryRate;
         const remainingBalance = salaryTotal - (totalCash + totalProduct);
 
-        const recentCash = cashRows.slice(-5).reverse();
-        const recentProduct = productRows.slice(-5).reverse();
         const recentCombined = [
-            ...recentCash.map(row => ({
+            ...cashRows.map(row => ({
                 date: row.date,
                 type: 'Cash',
                 product: '—',
                 qty: '—',
                 amount: parseFloat(row.amount) || 0
             })),
-            ...recentProduct.map(row => ({
+            ...productRows.map(row => ({
                 date: row.date,
                 type: 'Product',
                 product: row.productName || '—',
@@ -577,14 +609,20 @@ const EmployeesModule = {
             }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        // Get month name for display
+        const [year, month] = monthKey.split('-');
+        const monthName = new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
         content.innerHTML = `
             <div style="text-align:center; margin-bottom: 12px;">
                 <div style="font-size: 18px; font-weight: 700;">${employee.name} <span style="font-size: 12px; font-weight: 400; color:#6b7280;">(${employee.role || '—'})</span></div>
                 <div style="font-size: 12px; color:#6b7280; margin-top: 4px;">${employee.mobile || '—'}</div>
-                <div style="font-size: 12px; color:#6b7280; margin-top: 2px;">${this.formatDate(new Date())}</div>
+                <div style="margin-top: 8px;">
+                    <input type="month" id="employeeDetailsMonth" class="form-input" value="${monthKey}" style="display: inline-block; width: auto; padding: 4px 8px; font-size: 13px;" />
+                </div>
             </div>
 
-            <h4 style="margin: 6px 0;">Recent Advances</h4>
+            <h4 style="margin: 6px 0;">${monthName} - Advances</h4>
             ${recentCombined.length ? `
                 <table class="table">
                     <thead>
@@ -612,7 +650,7 @@ const EmployeesModule = {
                         </tr>
                     </tbody>
                 </table>
-            ` : `<p style="text-align:center; color:#6c757d;">No records</p>`}
+            ` : `<p style="text-align:center; color:#6c757d;">No advances for this month</p>`}
 
             <div class="summary-box" style="margin-top: 12px;">
                 <div class="summary-row">
@@ -626,10 +664,15 @@ const EmployeesModule = {
                 <div class="summary-row"><span>Total Advance</span><strong>৳${this.formatCurrency(totalCash + totalProduct)}</strong></div>
                 <div class="summary-row summary-row-total"><span>Remaining Balance</span><strong>৳${this.formatCurrency(remainingBalance)}</strong></div>
             </div>
-
         `;
 
-        modal.classList.add('show');
+        // Bind month change event
+        const monthInputAfterRender = document.getElementById('employeeDetailsMonth');
+        if (monthInputAfterRender) {
+            monthInputAfterRender.removeEventListener('change', this.boundRenderDetails);
+            this.boundRenderDetails = () => this.renderEmployeeDetails();
+            monthInputAfterRender.addEventListener('change', this.boundRenderDetails);
+        }
     },
 
     renderDetailsTable(rows, headers, rowMapper) {
@@ -654,6 +697,11 @@ const EmployeesModule = {
     closeDetailsModal() {
         const modal = document.getElementById('employeeDetailsModal');
         if (modal) modal.classList.remove('show');
+        
+        // Clear stored data
+        this.currentEmployeeId = null;
+        this.currentEmployee = null;
+        this.currentEmployeeData = null;
     },
 
     formatDate(dateValue) {

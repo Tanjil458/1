@@ -158,15 +158,79 @@ h1, h2, h3 {
 .icon-btn {
     border: none;
     background: transparent;
-    font-size: 20px;
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .icon-btn:hover {
     background: var(--bg);
+}
+
+.icon-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.header-icon {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.icon-btn:active .header-icon {
+    transform: scale(0.9);
+}
+
+/* Sync status indicator states */
+.sync-synced .header-icon {
+    stroke: #10b981; /* Green - all synced */
+}
+
+.sync-pending .header-icon {
+    stroke: #f59e0b; /* Orange - has unsynced data */
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.sync-syncing .header-icon {
+    stroke: #3b82f6; /* Blue - syncing in progress */
+}
+
+.sync-error .header-icon {
+    stroke: #ef4444; /* Red - sync error */
+}
+
+.sync-disabled .header-icon {
+    stroke: #6b7280; /* Gray - not signed in */
+    opacity: 0.5;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.spinning {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .form-group {
