@@ -55,7 +55,7 @@ function showError(message) {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const companyId = document.getElementById('companyId').value.trim();
+    let companyId = document.getElementById('companyId').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
     const password = document.getElementById('password').value;
     const loginBtn = document.getElementById('loginBtn');
@@ -66,6 +66,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         showError('Please enter Company ID, Employee ID and Password');
         return;
     }
+    
+    // Expand short company ID to full ID using mapping
+    companyId = expandCompanyId(companyId);
     
     // Show loading state
     loginBtn.disabled = true;

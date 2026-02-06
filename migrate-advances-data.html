@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migrate Advances Data - Add Missing Fields</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 10px 10px 0;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .output {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Migrate Advances Data</h1>
+        <p class="description">
+            This tool updates existing advance records to include the new <strong>reason</strong> and <strong>status</strong> fields,
+            and ensures <strong>employeeId</strong> is stored as a string for proper sync with employee app.
+        </p>
+
+        <div>
+            <button class="button" onclick="checkData()">1. Check Data</button>
+            <button class="button" onclick="migrateData()">2. Migrate Data</button>
+            <button class="button" onclick="verifyFix()">3. Verify Fix</button>
+        </div>
+
+        <div id="output" class="output" style="display:none;"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- DB Module -->
+    <script src="js/db/db.js"></script>
+
+    <script>
+        let outputDiv;
+
+        function log(message, type = 'info') {
+            if (!outputDiv) {
+                outputDiv = document.getElementById('output');
+                outputDiv.style.display = 'block';
+            }
+            const className = type === 'success' ? 'success' : 
+                             type === 'error' ? 'error' : 
+                             type === 'warning' ? 'warning' : 'info';
+            outputDiv.innerHTML += `<div class="${className}">${message}</div>`;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearOutput() {
+            outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '';
+            outputDiv.style.display = 'block';
+        }
+
+        async function checkData() {
+            clearOutput();
+            log('🔍 Checking advances data...', 'info');
+            
+            try {
+                await DB.init();
+                const advances = await DB.getAll('advances');
+                
+                log(`\n📊 Found ${advances.length} advance records`, 'info');
+                
+                let needsMigration = 0;
+                let alreadyMigrated = 0;
+                
+                for (const adv of advances) {
+                    const hasReason = !!adv.reason;
+                    const hasStatus = !!adv.status;
+                    const employeeIdIsString = typeof adv.employeeId === 'string';
+                    
+                    if (!hasReason || !hasStatus || !employeeIdIsString) {
+                        needsMigration++;
+                        log(`  ⚠️ Record ${adv.id}: needs migration`, 'warning');
+                        log(`    - employeeId: ${adv.employeeId} (${typeof adv.employeeId})`, 'info');
+                        log(`    - has reason: ${hasReason}`, 'info');
+                        log(`    - has status: ${hasStatus}`, 'info');
+                    } else {
+                        alreadyMigrated++;
+                    }
+                }
+                
+                log(`\n✅ Already migrated: ${alreadyMigrated}`, 'success');
+                log(`⚠️ Needs migration: ${needsMigration}`, needsMigration > 0 ? 'warning' : 'success');
+                
+                if (needsMigration === 0) {
+                    log('\n🎉 All records are already properly formatted!', 'success');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        async function migrateData() {
+            clearOutput();
+            log('🔄 Starting migration...', 'info');
+            
+            try {
+                await DB.init();
+                const advances = await DB.getAll('advances');
+                
+                log(`📦 Processing ${advances.length} records...`, 'info');
+                
+                let migrated = 0;
+                let skipped = 0;
+                
+                for (const adv of advances) {
+                    let needsUpdate = false;
+                    const updates = { ...adv };
+                    
+                    // Ensure employeeId is string
+                    if (typeof adv.employeeId !== 'string') {
+                        updates.employeeId = String(adv.employeeId);
+                        needsUpdate = true;
+                        log(`  📝 Record ${adv.id}: Converting employeeId to string`, 'info');
+                    }
+                    
+                    // Add reason field if missing
+                    if (!adv.reason) {
+                        updates.reason = adv.note || (adv.type === 'product' ? `Product: ${adv.productName || 'N/A'}` : 'No reason provided');
+                        needsUpdate = true;
+                        log(`  📝 Record ${adv.id}: Adding reason field`, 'info');
+                    }
+                    
+                    // Add status field if missing
+                    if (!adv.status) {
+                        updates.status = 'pending';
+                        needsUpdate = true;
+                        log(`  📝 Record ${adv.id}: Adding status field`, 'info');
+                    }
+                    
+                    if (needsUpdate) {
+                        await DB.update('advances', updates);
+                        migrated++;
+                        log(`  ✅ Record ${adv.id}: Updated`, 'success');
+                    } else {
+                        skipped++;
+                    }
+                }
+                
+                log(`\n✅ Migration complete!`, 'success');
+                log(`  - Updated: ${migrated}`, 'success');
+                log(`  - Skipped (already OK): ${skipped}`, 'info');
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        async function verifyFix() {
+            clearOutput();
+            log('✅ Verifying migration...', 'info');
+            
+            try {
+                await DB.init();
+                const advances = await DB.getAll('advances');
+                
+                log(`\n📊 Checking ${advances.length} records...`, 'info');
+                
+                let allGood = true;
+                
+                for (const adv of advances) {
+                    const employeeIdIsString = typeof adv.employeeId === 'string';
+                    const hasReason = !!adv.reason;
+                    const hasStatus = !!adv.status;
+                    
+                    if (!employeeIdIsString || !hasReason || !hasStatus) {
+                        allGood = false;
+                        log(`  ❌ Record ${adv.id}: Still has issues`, 'error');
+                        log(`    - employeeId is string: ${employeeIdIsString}`, employeeIdIsString ? 'success' : 'error');
+                        log(`    - has reason: ${hasReason}`, hasReason ? 'success' : 'error');
+                        log(`    - has status: ${hasStatus}`, hasStatus ? 'success' : 'error');
+                    } else {
+                        log(`  ✅ Record ${adv.id}: OK (employeeId: ${adv.employeeId}, status: ${adv.status})`, 'success');
+                    }
+                }
+                
+                if (allGood) {
+                    log(`\n🎉 All records are properly formatted!`, 'success');
+                    log(`\n📌 Next steps:`, 'info');
+                    log(`  1. Go to admin app`, 'info');
+                    log(`  2. Click Sync button to push changes to Firestore`, 'info');
+                    log(`  3. Test employee app to verify advances appear`, 'info');
+                } else {
+                    log(`\n⚠️ Some records still need attention`, 'warning');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Auto-initialize DB on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await DB.init();
+                log('✅ Database initialized', 'success');
+            } catch (error) {
+                log(`❌ Failed to initialize database: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

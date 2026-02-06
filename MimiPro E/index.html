@@ -26,11 +26,14 @@
                     type="text" 
                     id="companyId" 
                     class="form-input" 
-                    placeholder="Enter company ID"
+                    placeholder="Enter 8-character company ID"
                     required
                     autocomplete="off"
+                    maxlength="32"
                 >
-                <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Ask your supervisor for Company ID</small>
+                <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                    Ask your supervisor for the 8-character Company ID (e.g., 5ti4r7Rz)
+                </small>
             </div>
 
             <div class="form-group">
@@ -75,6 +78,9 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Company ID Mapping -->
+    <script src="auth/company-id-map.js"></script>
     
     <!-- Auth Script -->
     <script src="auth/employee-auth.js"></script>

@@ -26,6 +26,7 @@ const Dashboard = {
             const pendingAdvances = advances
                 .filter(adv => adv.status === 'pending')
                 .reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
+            const totalDaysWorked = attendance.length; // Total days worked (all time)
 
         return `
             <h2 class="section-title">Welcome, ${session.name}!</h2>
@@ -33,23 +34,27 @@ const Dashboard = {
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">📅</div>
-                    <div class="stat-label">Days Present</div>
+                    <div class="stat-label">This Month</div>
                     <div class="stat-value">${monthAttendance.length}</div>
+                    <div class="stat-subtitle">days present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-label">Total Days Worked</div>
+                    <div class="stat-value">${totalDaysWorked}</div>
+                    <div class="stat-subtitle">all time</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🚚</div>
                     <div class="stat-label">Deliveries</div>
                     <div class="stat-value">${monthDeliveries.length}</div>
+                    <div class="stat-subtitle">this month</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">💰</div>
-                    <div class="stat-label">Total Advances</div>
+                    <div class="stat-label">Advances Taken</div>
                     <div class="stat-value">${MoneyUtils.formatMoney(totalAdvances)}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-label">Pending</div>
-                    <div class="stat-value">${MoneyUtils.formatMoney(pendingAdvances)}</div>
+                    <div class="stat-subtitle">pending: ${MoneyUtils.formatMoney(pendingAdvances)}</div>
                 </div>
             </div>
 
