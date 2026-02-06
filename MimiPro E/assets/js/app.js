@@ -30,10 +30,14 @@ const App = {
         // Navigate to initial page
         await this.navigateTo('dashboard');
 
-        // Auto-sync on first load
-        setTimeout(() => {
+        // Auto-sync on first load with a delay to ensure DB is ready
+        setTimeout(async () => {
+            console.log('⏱️ Waiting for IndexedDB to be fully ready...');
+            // Give IndexedDB time to fully initialize
+            await new Promise(r => setTimeout(r, 500));
+            console.log('🔄 Starting auto-sync...');
             SyncManager.syncAll();
-        }, 1000);
+        }, 1500);
     },
 
     initNavigation() {

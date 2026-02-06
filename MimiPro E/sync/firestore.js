@@ -25,7 +25,7 @@ const FirestoreService = {
             console.log('📥 Fetching profile for:', { companyId, employeeId });
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
-                .collection('employees')
+                .collection('profile')
                 .where('employeeId', '==', employeeId)
                 .limit(1)
                 .get();
@@ -48,14 +48,19 @@ const FirestoreService = {
     async getEmployeeAttendance(companyId, employeeId) {
         try {
             console.log('📥 Fetching attendance for:', { companyId, employeeId });
+            console.log('📋 Data types:', { companyIdType: typeof companyId, employeeIdType: typeof employeeId });
+            
+            // Query from shared companyId path
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('attendance')
-                .where('employeeId', '==', employeeId)
+                .where('employeeId', '==', String(employeeId))
                 .get();
+            
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             console.log('✅ Fetched', results.length, 'attendance records');
             return results;
+            
         } catch (error) {
             console.error('❌ Error fetching attendance:', error.code, error.message);
             throw error;
@@ -68,8 +73,8 @@ const FirestoreService = {
             console.log('📥 Fetching deliveries for:', { companyId, employeeId });
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
-                .collection('deliveries')
-                .where('employeeId', '==', employeeId)
+                .collection('delivery')
+                .where('employeeId', '==', String(employeeId))
                 .get();
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             console.log('✅ Fetched', results.length, 'delivery records');
@@ -87,7 +92,7 @@ const FirestoreService = {
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('advances')
-                .where('employeeId', '==', employeeId)
+                .where('employeeId', '==', String(employeeId))
                 .get();
             
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

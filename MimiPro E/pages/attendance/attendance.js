@@ -1,71 +1,100 @@
-// Attendance Page
+// Attendance Page - View Only (Employee App) - Connected to Firestore
+// Shows real-time attendance marked by admin
 
 const Attendance = {
-    currentMonth: new Date().getMonth(),
-    currentYear: new Date().getFullYear(),
+    employeeId: null,
+    employeeName: null,
+    companyId: null,
 
     async render() {
         try {
             const session = getSession();
             if (!session || !session.employeeId) {
+                console.error('❌ No session or employeeId found');
                 return `<div class="empty-state"><div class="empty-title">No session found</div></div>`;
             }
             
-            const employeeId = session.employeeId;
-            console.log('📅 Attendance: Loading data for employee:', employeeId);
+            this.employeeId = String(session.employeeId); // Ensure it's a string
+            this.employeeName = session.name || 'Employee';
+            this.companyId = session.companyId;
 
-            // Get attendance data
-            const allAttendance = (await employeeDB.getAll(STORES.ATTENDANCE)).filter(a => a.employeeId === employeeId);
-            console.log('📅 Loaded', allAttendance.length, 'attendance records');
+            console.log('✅ Attendance page initialized:', {
+                employeeId: this.employeeId,
+                employeeName: this.employeeName,
+                companyId: this.companyId
+            });
 
-            // Filter by current month
-            const monthStart = new Date(this.currentYear, this.currentMonth, 1);
-            const monthEnd = new Date(this.currentYear, this.currentMonth + 1, 0);
-            const startDate = DateUtils.formatDate(monthStart);
-            const endDate = DateUtils.formatDate(monthEnd);
+            const now = new Date();
+            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-            const monthAttendance = allAttendance.filter(att => 
-                att.date && att.date >= startDate && att.date <= endDate
-            );
+            return `
+                <section class="page active" id="attendance">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>My Attendance</h3>
+                            <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">
+                                Employee ID: ${this.employeeId}
+                            </div>
+                        </div>
+                        <div class="filters" style="margin-bottom: 8px; display:flex; gap:12px; align-items:center;">
+                            <div class="filter-group" style="display:flex; gap:8px; align-items:center;">
+                                <button class="btn btn-secondary btn-small" id="attendancePrevMonth">‹</button>
+                                <label for="attendanceMonth">Month:</label>
+                                <input type="month" id="attendanceMonth" value="${monthKey}" />
+                                <button class="btn btn-secondary btn-small" id="attendanceNextMonth">›</button>
+                            </div>
+                            <div style="margin-left:auto;">
+                                <button class="btn btn-secondary btn-small" id="attendanceRefresh">🔄 Refresh</button>
+                            </div>
+                        </div>
+                        <div style="overflow:auto;">
+                            <table class="table attendance-month-table" id="attendanceMonthTable">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:90px;">Date</th>
+                                        <th style="min-width:70px;">Day</th>
+                                        <th style="min-width:150px;">${this.employeeName}</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
 
-            // Sort by date descending
-            monthAttendance.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
-        return `
-            <h2 class="section-title">My Attendance</h2>
-
-            <div class="date-filter">
-                <button class="btn-secondary" id="prevMonth">◀ Previous</button>
-                <div style="flex: 1; text-align: center; padding: 0.625rem; font-weight: 600;">
-                    ${DateUtils.getMonthName(this.currentMonth)} ${this.currentYear}
-                </div>
-                <button class="btn-secondary" id="nextMonth">Next ▶</button>
-            </div>
-
-            <div class="summary-card">
-                <div class="summary-row">
-                    <span class="summary-label">Total Days</span>
-                    <span class="summary-value">${monthAttendance.length}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Present</span>
-                    <span class="summary-value text-success">
-                        ${monthAttendance.filter(a => a.status === 'present' || !a.status).length}
-                    </span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Absent</span>
-                    <span class="summary-value text-error">
-                        ${monthAttendance.filter(a => a.status === 'absent').length}
-                    </span>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3 class="section-title">Attendance Records</h3>
-                ${this.renderAttendanceList(monthAttendance)}
-            </div>
-        `;
+                    <div class="card" style="margin-top:12px;">
+                        <div class="card-header">
+                            <h4>Monthly Summary</h4>
+                        </div>
+                        <div style="overflow:auto;">
+                            <table class="table attendance-summary-table" id="attendanceSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width:200px;">Description</th>
+                                        <th style="min-width:120px; text-align:right;">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Days Present</td>
+                                        <td style="text-align:right; font-weight:700; color: var(--success);" id="presentCount">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Days Absent</td>
+                                        <td style="text-align:right; font-weight:700; color: var(--error);" id="absentCount">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Total Days in Month</td>
+                                        <td style="text-align:right; font-weight:700;" id="totalCount">0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p style="text-align: center; color: var(--muted); font-size: 12px; margin-top: 12px;">
+                        📡 Live data from admin panel
+                    </p>
+                </section>
+            `;
         } catch (error) {
             console.error('❌ Attendance render error:', error);
             return `
@@ -73,70 +102,192 @@ const Attendance = {
                     <div class="empty-icon">⚠️</div>
                     <div class="empty-title">Error loading attendance</div>
                     <div class="empty-text">${error.message}</div>
-                    <button class="btn btn-primary" onclick="SyncManager.syncAll()" style="margin-top: 20px;">🔄 Try Syncing</button>
                 </div>
             `;
         }
     },
 
-    renderAttendanceList(attendance) {
-        if (attendance.length === 0) {
-            return `
-                <div class="empty-state">
-                    <div class="empty-icon">📅</div>
-                    <div class="empty-title">No attendance records</div>
-                    <div class="empty-text">No attendance found for this month</div>
-                </div>
-            `;
+    async attachEventListeners() {
+        const monthInput = document.getElementById('attendanceMonth');
+        const refreshBtn = document.getElementById('attendanceRefresh');
+        const prevBtn = document.getElementById('attendancePrevMonth');
+        const nextBtn = document.getElementById('attendanceNextMonth');
+
+        // Render initial month data
+        if (monthInput && monthInput.value) {
+            await this.renderAttendanceMonth(monthInput.value);
         }
 
-        return `
-            <div class="list-container">
-                ${attendance.map(att => {
-                    const status = att.status || 'present';
-                    const badgeClass = status === 'present' ? 'badge-success' : 'badge-error';
-                    const icon = status === 'present' ? '✓' : '✗';
-                    
-                    return `
-                        <div class="list-item">
-                            <div class="item-left">
-                                <div class="item-title">${DateUtils.formatDisplayDate(att.date)}</div>
-                                <div class="item-subtitle">${DateUtils.getDayName(new Date(att.date).getDay())}</div>
-                            </div>
-                            <div class="item-right">
-                                <span class="badge ${badgeClass}">${icon} ${status.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    },
+        if (monthInput) {
+            monthInput.addEventListener('change', (e) => {
+                this.renderAttendanceMonth(e.target.value);
+            });
+        }
 
-    attachEventListeners() {
-        const prevBtn = document.getElementById('prevMonth');
-        const nextBtn = document.getElementById('nextMonth');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                if (monthInput) {
+                    this.renderAttendanceMonth(monthInput.value);
+                }
+            });
+        }
 
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
-                this.currentMonth--;
-                if (this.currentMonth < 0) {
-                    this.currentMonth = 11;
-                    this.currentYear--;
+                if (monthInput) {
+                    const [y, m] = monthInput.value.split('-').map(Number);
+                    const d = new Date(y, m - 2, 1);
+                    const newValue = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    monthInput.value = newValue;
+                    this.renderAttendanceMonth(newValue);
                 }
-                App.navigateTo('attendance');
             });
         }
 
         if (nextBtn) {
             nextBtn.addEventListener('click', () => {
-                this.currentMonth++;
-                if (this.currentMonth > 11) {
-                    this.currentMonth = 0;
-                    this.currentYear++;
+                if (monthInput) {
+                    const [y, m] = monthInput.value.split('-').map(Number);
+                    const d = new Date(y, m, 1);
+                    const newValue = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    monthInput.value = newValue;
+                    this.renderAttendanceMonth(newValue);
                 }
-                App.navigateTo('attendance');
             });
         }
+    },
+
+    async renderAttendanceMonth(monthKey) {
+        const table = document.getElementById('attendanceMonthTable');
+        if (!table || !monthKey || !this.employeeId) return;
+
+        const [yearStr, monthStr] = monthKey.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const todayKey = new Date().toISOString().slice(0, 10);
+
+        try {
+            console.log('📅 Rendering attendance for month:', monthKey, 'Employee:', this.employeeId);
+            
+            // Load attendance from Firestore (real-time data from admin)
+            const attendanceRecords = await this.getAttendanceFromFirestore(monthKey);
+            
+            console.log('📊 Total records fetched:', attendanceRecords.length);
+            console.log('📋 Records:', attendanceRecords);
+            
+            const attendanceMap = {};
+            attendanceRecords.forEach(r => {
+                if (r.date) {
+                    attendanceMap[r.date] = r;
+                }
+            });
+
+            console.log('🗺️ Attendance map:', attendanceMap);
+
+            // Render calendar
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dd = String(d).padStart(2, '0');
+                const dateKey = `${yearStr}-${String(month).padStart(2, '0')}-${dd}`;
+                const dateObj = new Date(dateKey);
+                const dayShort = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
+                const dateDisplay = `${dd}/${String(month).padStart(2, '0')}/${yearStr}`;
+                
+                const record = attendanceMap[dateKey];
+                const isPresent = !!record;
+                
+                console.log(`${dateKey}: ${isPresent ? '✓ Present' : '✗ Absent'}`, record);
+                
+                const tr = document.createElement('tr');
+                if (dateObj.getDay() === 5) {
+                    tr.classList.add('row-friday');
+                }
+                if (dateKey === todayKey) {
+                    tr.classList.add('row-today');
+                }
+                
+                const cellHTML = `
+                    <td>${dateDisplay}</td>
+                    <td>${dayShort}</td>
+                    <td class="attendance-cell">
+                        <button class="attendance-toggle ${isPresent ? 'present' : ''}" style="border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: default; background: ${isPresent ? '#d4edda' : '#f8f9fa'}; color: ${isPresent ? '#155724' : '#6c757d'};">
+                            ${isPresent ? '✔ Present' : '✗ Absent'}
+                        </button>
+                    </td>
+                `;
+                tr.innerHTML = cellHTML;
+                tbody.appendChild(tr);
+            }
+
+            // Update summary
+            this.updateSummary(attendanceRecords, daysInMonth);
+
+        } catch (error) {
+            console.error('❌ Error rendering attendance:', error);
+            UIUtils.showToast('Error loading attendance', 'error');
+        }
+    },
+
+    async getAttendanceFromFirestore(monthKey) {
+        try {
+            const session = getSession();
+            
+            if (!session || !session.companyId) {
+                console.warn('⚠️ No company ID in session');
+                return [];
+            }
+
+            console.log('📡 Employee requesting attendance from Firestore:', {
+                companyId: session.companyId,
+                employeeId: this.employeeId,
+                monthKey: monthKey
+            });
+
+            // Use the existing FirestoreService from firestore.js
+            if (typeof FirestoreService !== 'undefined' && FirestoreService.getEmployeeAttendance) {
+                const records = await FirestoreService.getEmployeeAttendance(session.companyId, this.employeeId);
+                console.log(`✅ Employee attendance page received: ${records.length} records`);
+                return records;
+            } else {
+                console.error('❌ FirestoreService not available');
+                return [];
+            }
+
+        } catch (error) {
+            console.error('❌ Error fetching attendance from Firestore:', error);
+            return [];
+        }
+    },
+
+    async getAttendanceFromLocal(monthKey) {
+        try {
+            const allAttendance = await employeeDB.getAll(STORES.ATTENDANCE);
+            return allAttendance.filter(r => 
+                String(r.employeeId) === String(this.employeeId) && 
+                r.date && 
+                r.date.startsWith(monthKey)
+            );
+        } catch (error) {
+            console.error('❌ Local DB error:', error);
+            return [];
+        }
+    },
+
+    updateSummary(attendanceRecords, daysInMonth) {
+        const presentCount = attendanceRecords.length;
+        const absentCount = daysInMonth - presentCount;
+
+        const presentEl = document.getElementById('presentCount');
+        const absentEl = document.getElementById('absentCount');
+        const totalEl = document.getElementById('totalCount');
+
+        if (presentEl) presentEl.textContent = presentCount;
+        if (absentEl) absentEl.textContent = absentCount;
+        if (totalEl) totalEl.textContent = daysInMonth;
     }
 };

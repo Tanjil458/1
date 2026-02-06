@@ -4,7 +4,7 @@
 
 const DB = {
     name: 'MimiProDB',
-    version: 7,
+    version: 8,
     instance: null,
 
     stores: {
@@ -178,6 +178,17 @@ const DB = {
                     });
                     areaStore.createIndex('name', 'name', { unique: false });
                     areaStore.createIndex('active', 'active', { unique: false });
+                }
+
+                // Expenses store
+                if (!db.objectStoreNames.contains('expenses')) {
+                    const expenseStore = db.createObjectStore('expenses', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    expenseStore.createIndex('date', 'date', { unique: false });
+                    expenseStore.createIndex('category', 'category', { unique: false });
+                    expenseStore.createIndex('synced', 'synced', { unique: false });
                 }
 
                 console.log('📦 Database schema created');
