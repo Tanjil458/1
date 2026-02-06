@@ -24,6 +24,11 @@ const SyncManager = {
         UIUtils.showLoading('Syncing data...');
 
         try {
+            // Ensure database is initialized before syncing
+            console.log('📂 Ensuring IndexedDB is ready...');
+            await employeeDB.ensureDB();
+            console.log('✅ IndexedDB ready');
+
             const companyId = session.companyId;
             const employeeId = session.employeeId;
             
@@ -71,28 +76,39 @@ const SyncManager = {
     // Sync profile
     async syncProfile(companyId, employeeId) {
         try {
+            console.log('📥 Syncing profile...');
             const profile = await FirestoreService.getEmployeeProfile(companyId, employeeId);
             if (profile) {
                 await employeeDB.put(STORES.PROFILE, profile);
+                console.log('✅ Profile synced');
             }
         } catch (error) {
-            console.error('Profile sync error:', error);
+            console.error('❌ Profile sync error:', error);
             throw error;
         }
     },
 
-    // Sync attendance
+    // Sync attendance - combined clear and put
     async syncAttendance(companyId, employeeId) {
         try {
+            console.log('📥 Syncing attendance...');
             const attendance = await FirestoreService.getEmployeeAttendance(companyId, employeeId);
             
-            // Clear old data and insert new
-            await employeeDB.clear(STORES.ATTENDANCE);
+            // Clear and insert in a safer way
             if (attendance.length > 0) {
+                // First clear
+                await employeeDB.clear(STORES.ATTENDANCE);
+                // Then put with small delay to ensure connection is ready
+                await new Promise(r => setTimeout(r, 100));
                 await employeeDB.putMany(STORES.ATTENDANCE, attendance);
+                console.log(`✅ Attendance synced (${attendance.length} records)`);
+            } else {
+                // If no new data, just clear
+                await employeeDB.clear(STORES.ATTENDANCE);
+                console.log('✅ Attendance cleared (no records)');
             }
         } catch (error) {
-            console.error('Attendance sync error:', error);
+            console.error('❌ Attendance sync error:', error);
             throw error;
         }
     },
@@ -100,15 +116,21 @@ const SyncManager = {
     // Sync deliveries
     async syncDeliveries(companyId, employeeId) {
         try {
+            console.log('📥 Syncing deliveries...');
             const deliveries = await FirestoreService.getEmployeeDeliveries(companyId, employeeId);
             
-            // Clear old data and insert new
-            await employeeDB.clear(STORES.DELIVERIES);
+            // Clear and insert in a safer way
             if (deliveries.length > 0) {
+                await employeeDB.clear(STORES.DELIVERIES);
+                await new Promise(r => setTimeout(r, 100));
                 await employeeDB.putMany(STORES.DELIVERIES, deliveries);
+                console.log(`✅ Deliveries synced (${deliveries.length} records)`);
+            } else {
+                await employeeDB.clear(STORES.DELIVERIES);
+                console.log('✅ Deliveries cleared (no records)');
             }
         } catch (error) {
-            console.error('Deliveries sync error:', error);
+            console.error('❌ Deliveries sync error:', error);
             throw error;
         }
     },
@@ -116,15 +138,21 @@ const SyncManager = {
     // Sync advances
     async syncAdvances(companyId, employeeId) {
         try {
+            console.log('📥 Syncing advances...');
             const advances = await FirestoreService.getEmployeeAdvances(companyId, employeeId);
             
-            // Clear old data and insert new
-            await employeeDB.clear(STORES.ADVANCES);
+            // Clear and insert in a safer way
             if (advances.length > 0) {
+                await employeeDB.clear(STORES.ADVANCES);
+                await new Promise(r => setTimeout(r, 100));
                 await employeeDB.putMany(STORES.ADVANCES, advances);
+                console.log(`✅ Advances synced (${advances.length} records)`);
+            } else {
+                await employeeDB.clear(STORES.ADVANCES);
+                console.log('✅ Advances cleared (no records)');
             }
         } catch (error) {
-            console.error('Advances sync error:', error);
+            console.error('❌ Advances sync error:', error);
             throw error;
         }
     },

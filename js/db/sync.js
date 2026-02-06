@@ -255,18 +255,47 @@ const SyncModule = {
 
         try {
             const userId = this.currentUser.uid;
-            const docRef = FirebaseDB.collection('users')
-                .doc(userId)
-                .collection(storeName)
-                .doc(String(data.id));
+            // Use full userId as companyId (this is what employees use to login)
+            const companyId = userId;
+            
+            // Shared stores that employees need to access (use companyId path)
+            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
+            
+            let docRef;
+            if (sharedStores.includes(storeName)) {
+                // Write to companyId path so employees can read it
+                docRef = FirebaseDB.collection('users')
+                    .doc(companyId)
+                    .collection(storeName)
+                    .doc(String(data.id));
+                console.log(`🔗 Writing ${storeName} to shared path: users/${companyId}/${storeName}`);
+            } else {
+                // Write private admin data using full userId
+                docRef = FirebaseDB.collection('users')
+                    .doc(userId)
+                    .collection(storeName)
+                    .doc(String(data.id));
+            }
 
             await docRef.set({
                 ...data,
                 syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: userId
+                userId: userId,
+                companyId: companyId
             }, { merge: true });
 
             console.log(`✅ Pushed ${storeName}/${data.id} to cloud`);
+            
+            // Extra logging for attendance to help debug
+            if (storeName === 'attendance') {
+                console.log(`📊 Attendance Details:`, {
+                    id: data.id,
+                    employeeId: data.employeeId,
+                    employeeIdType: typeof data.employeeId,
+                    date: data.date,
+                    path: `users/${companyId}/attendance/${data.id}`
+                });
+            }
         } catch (error) {
             console.error(`❌ Failed to push ${storeName}/${data.id}:`, error);
             
@@ -301,10 +330,22 @@ service cloud.firestore {
 
         try {
             const userId = this.currentUser.uid;
-            const docRef = FirebaseDB.collection('users')
-                .doc(userId)
-                .collection(storeName)
-                .doc(String(id));
+            const companyId = userId;
+            
+            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
+            
+            let docRef;
+            if (sharedStores.includes(storeName)) {
+                docRef = FirebaseDB.collection('users')
+                    .doc(companyId)
+                    .collection(storeName)
+                    .doc(String(id));
+            } else {
+                docRef = FirebaseDB.collection('users')
+                    .doc(userId)
+                    .collection(storeName)
+                    .doc(String(id));
+            }
 
             await docRef.delete();
             console.log(`✅ Deleted ${storeName}/${id} from cloud`);
@@ -324,21 +365,35 @@ service cloud.firestore {
 
         try {
             const userId = this.currentUser.uid;
+            const companyId = userId;
             const stores = Object.values(DB.stores);
+            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
             let totalSynced = 0;
 
             for (const storeName of stores) {
                 try {
-                    const snapshot = await FirebaseDB.collection('users')
-                        .doc(userId)
-                        .collection(storeName)
-                        .get();
+                    let snapshot;
+                    
+                    if (sharedStores.includes(storeName)) {
+                        // Read from companyId path
+                        snapshot = await FirebaseDB.collection('users')
+                            .doc(companyId)
+                            .collection(storeName)
+                            .get();
+                        console.log(`📖 Reading ${storeName} from shared path: users/${companyId}/${storeName}`);
+                    } else {
+                        // Read from private userId path
+                        snapshot = await FirebaseDB.collection('users')
+                            .doc(userId)
+                            .collection(storeName)
+                            .get();
+                    }
 
                     for (const doc of snapshot.docs) {
                         const cloudData = doc.data();
                         
                         // Remove Firebase-specific fields before saving to IndexedDB
-                        const { syncedAt, userId: uid, ...cleanData } = cloudData;
+                        const { syncedAt, userId: uid, companyId: cid, ...cleanData } = cloudData;
                         
                         // Get local data
                         const localData = await DB.getById(storeName, cleanData.id);
@@ -476,6 +531,8 @@ service cloud.firestore {
         }
 
         const userId = this.currentUser.uid;
+        const companyId = userId;
+        const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
         
         // Unsubscribe existing listener if any
         if (this.realtimeListeners[storeName]) {
@@ -483,13 +540,21 @@ service cloud.firestore {
         }
 
         // Setup new listener
-        const unsubscribe = FirebaseDB.collection('users')
-            .doc(userId)
-            .collection(storeName)
-            .onSnapshot((snapshot) => {
+        let collectionRef;
+        if (sharedStores.includes(storeName)) {
+            collectionRef = FirebaseDB.collection('users')
+                .doc(companyId)
+                .collection(storeName);
+        } else {
+            collectionRef = FirebaseDB.collection('users')
+                .doc(userId)
+                .collection(storeName);
+        }
+
+        const unsubscribe = collectionRef.onSnapshot((snapshot) => {
                 snapshot.docChanges().forEach(async (change) => {
                     const data = change.doc.data();
-                    const { syncedAt, userId: uid, ...cleanData } = data;
+                    const { syncedAt, userId: uid, companyId: cid, ...cleanData } = data;
 
                     if (change.type === 'added' || change.type === 'modified') {
                         // Check if this change came from another device
@@ -581,7 +646,15 @@ service cloud.firestore {
                             totalPushed++;
                         } catch (itemError) {
                             console.error(`❌ Failed to sync ${storeName}/${data.id}:`, itemError);
-                            errors.push(`${storeName}/${data.id}`);
+                            console.error('Failed item data:', JSON.stringify(data, null, 2));
+                            console.error('Error code:', itemError.code);
+                            console.error('Error message:', itemError.message);
+                            errors.push({ 
+                                store: storeName, 
+                                id: data.id, 
+                                error: itemError.message || itemError.code || 'Unknown error',
+                                data: data 
+                            });
                         }
                     }
                 } catch (storeError) {
@@ -595,7 +668,9 @@ service cloud.firestore {
 
             if (window.App) {
                 if (errors.length > 0) {
-                    App.showToast(`Partially synced: ${totalPushed} items (${errors.length} errors)`, 'warning');
+                    const errorDetails = errors.map(e => `${e.store}/${e.id}: ${e.error}`).join('\n');
+                    console.error('📋 SYNC ERROR DETAILS:\n' + errorDetails);
+                    App.showToast(`Partially synced: ${totalPushed} items (${errors.length} errors) - Check console for details`, 'warning');
                 } else if (totalPushed > 0) {
                     App.showToast(`Sync complete! ${totalPushed} items uploaded`, 'success');
                 } else {
@@ -605,7 +680,10 @@ service cloud.firestore {
             
             console.log(`✅ Full sync completed: ${totalPushed} items pushed`);
             if (errors.length > 0) {
-                console.warn('⚠️ Sync errors:', errors);
+                console.error('⚠️ SYNC ERRORS SUMMARY:');
+                errors.forEach(err => {
+                    console.error(`  - ${err.store}/${err.id}: ${err.error}`);
+                });
             }
         } catch (error) {
             console.error('❌ Force sync failed:', error);

@@ -74,8 +74,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     try {
         // Hash the password
         const passwordHash = await hashPassword(password);
+        console.log('🔐 Password hash generated');
         
         // Query Firestore for employee under company/user
+        console.log(`📍 Querying: /users/${companyId}/employees`);
         const employeeSnapshot = await db.collection('users')
             .doc(companyId)
             .collection('employees')
@@ -83,7 +85,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             .limit(1)
             .get();
         
+        console.log(`📊 Query result: ${employeeSnapshot.size} employees found`);
+        
         if (employeeSnapshot.empty) {
+            console.error('❌ No employee found with ID:', employeeId);
+            console.log('💡 Debug info:');
+            console.log('  - Company ID:', companyId);
+            console.log('  - Employee ID:', employeeId);
+            console.log('  - Make sure you have synced employees from the admin app');
             showError('Invalid Company ID, Employee ID or Password');
             loginBtn.disabled = false;
             loginBtn.classList.remove('loading');
@@ -92,16 +101,33 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         
         const employeeDoc = employeeSnapshot.docs[0];
         const employeeData = employeeDoc.data();
+        console.log('✅ Employee found:', employeeData.name);
         
         // Verify password
+        console.log('🔒 Verifying password...');
+        console.log('  - Provided hash:', passwordHash.substring(0, 16) + '...');
+        console.log('  - Expected hash:', employeeData.passwordHash?.substring(0, 16) + '...');
+        
+        if (!employeeData.passwordHash) {
+            console.error('❌ Error: Employee record has no password hash!');
+            showError('Account configuration error. Contact administrator.');
+            loginBtn.disabled = false;
+            loginBtn.classList.remove('loading');
+            return;
+        }
+        
         if (employeeData.passwordHash !== passwordHash) {
+            console.error('❌ Password mismatch');
             showError('Invalid Company ID, Employee ID or Password');
             loginBtn.disabled = false;
             loginBtn.classList.remove('loading');
             return;
         }
         
+        console.log('✅ Password verified');
+        
         // Check if employee is active
+        console.log('🟢 Checking status:', employeeData.status);
         if (employeeData.status !== 'active') {
             showError('Your account is inactive. Please contact your supervisor.');
             loginBtn.disabled = false;
