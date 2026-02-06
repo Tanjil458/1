@@ -54,6 +54,29 @@ const DashboardModule = {
                     <button class="btn btn-secondary" onclick="App.navigateTo('attendancePage')">Attendance</button>
                     <button class="btn btn-secondary" onclick="App.navigateTo('creditsPage')">Credits</button>
                 </div>
+                <button class="btn btn-secondary" onclick="DashboardModule.showCredentialsModal()" style="width: 100%; margin-top: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; font-weight: 600;">
+                    🔑 Employee Login Credentials
+                </button>
+            </div>
+
+            <div class="card" id="credentialsCard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: none;">
+                <div class="card-header" style="border-bottom-color: rgba(255,255,255,0.2);">
+                    <h3 style="color: white;">🔑 Employee Login Credentials</h3>
+                </div>
+                <div style="padding: 20px;">
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">Your Company ID</div>
+                        <div id="dashboardCompanyId" style="font-size: 18px; font-weight: bold; font-family: monospace; word-break: break-all; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+                            Loading...
+                        </div>
+                        <button onclick="DashboardModule.copyCompanyId()" style="margin-top: 10px; background: white; color: #667eea; border: none; padding: 8px 16px; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                            📋 Copy Company ID
+                        </button>
+                    </div>
+                    <div id="employeeCredentialsList" style="max-height: 300px; overflow-y: auto;">
+                        <div style="text-align: center; padding: 20px; opacity: 0.7;">Loading employees...</div>
+                    </div>
+                </div>
             </div>
 
             <div class="card">
@@ -122,6 +145,9 @@ const DashboardModule = {
 
     async loadDashboardData() {
         try {
+            // Load Company ID first
+            this.loadCompanyIdAndEmployees();
+
             const [history, products, employees, customers, areas, credits, attendance] = await Promise.all([
                 DB.getAll('history'),
                 DB.getAll('products'),
@@ -311,6 +337,168 @@ const DashboardModule = {
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         return `${dd}/${mm}/${yyyy}`;
+    },
+
+    async loadCompanyIdAndEmployees() {
+        const companyIdEl = document.getElementById('dashboardCompanyId');
+        const credentialsListEl = document.getElementById('employeeCredentialsList');
+        
+        if (!companyIdEl || !credentialsListEl) return;
+
+        try {
+            // Get Company ID from Firebase Auth or localStorage
+            let userId = null;
+            let userEmail = 'Not signed in';
+            
+            if (window.FirebaseAuth && window.FirebaseAuth.currentUser) {
+                userId = window.FirebaseAuth.currentUser.uid;
+                userEmail = window.FirebaseAuth.currentUser.email;
+            } else if (window.FirebaseSync && window.FirebaseSync.currentUser) {
+                userId = window.FirebaseSync.currentUser.uid;
+                userEmail = window.FirebaseSync.currentUser.email;
+            } else {
+                userId = localStorage.getItem('localUserId');
+                userEmail = 'Offline mode';
+            }
+
+            if (userId) {
+                companyIdEl.innerHTML = `
+                    <div style="font-size: 20px; margin-bottom: 5px;">${userId}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">Signed in: ${userEmail}</div>
+                `;
+                this.currentCompanyId = userId;
+            } else {
+                companyIdEl.textContent = 'No user signed in';
+            }
+
+            // Load employees
+            const employees = await DB.getAll('employees');
+            const activeEmployees = (employees || [])
+                .filter(emp => emp.status === 'active')
+                .sort((a, b) => (a.employeeId || '').localeCompare(b.employeeId || ''));
+
+            if (!activeEmployees.length) {
+                credentialsListEl.innerHTML = `
+                    <div style="text-align: center; padding: 20px; opacity: 0.7;">
+                        No employees yet. Add employees to see their credentials here.
+                    </div>
+                    <button onclick="App.navigateTo('employeeListingPage')" style="width: 100%; background: white; color: #667eea; border: none; padding: 12px; border-radius: 5px; font-weight: 600; cursor: pointer;">
+                        ➕ Add Employee
+                    </button>
+                `;
+                return;
+            }
+
+            credentialsListEl.innerHTML = `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                    <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">⚠️ Important:</div>
+                    <div style="font-size: 13px; line-height: 1.5;">
+                        Passwords are only shown when creating an employee. They cannot be retrieved later for security. 
+                        If an employee forgets their password, create a new employee account.
+                    </div>
+                </div>
+                ${activeEmployees.map(emp => `
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; font-size: 16px; margin-bottom: 3px;">
+                                    ${emp.name || 'Unnamed Employee'}
+                                </div>
+                                <div style="font-size: 13px; opacity: 0.9; margin-bottom: 8px;">
+                                    ${emp.role || 'No role'} • ${emp.phone || emp.mobile || 'No phone'}
+                                </div>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <div style="background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px; font-size: 12px;">
+                                        <span style="opacity: 0.7;">Employee ID:</span> 
+                                        <strong>${emp.employeeId || 'N/A'}</strong>
+                                    </div>
+                                    <div style="background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 4px; font-size: 12px;">
+                                        <span style="opacity: 0.7;">Password:</span> 
+                                        <strong>Set when created (not stored)</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="DashboardModule.copyEmployeeId('${emp.employeeId}')" style="background: rgba(255,255,255,0.2); border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; color: white; font-size: 12px; white-space: nowrap;">
+                                📋 Copy ID
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                <button onclick="App.navigateTo('employeeListingPage')" style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: 600; cursor: pointer; margin-top: 10px;">
+                    ➕ Add New Employee
+                </button>
+            `;
+        } catch (error) {
+            console.error('Error loading employee credentials:', error);
+            credentialsListEl.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.7);">
+                    Error loading employees: ${error.message}
+                </div>
+            `;
+        }
+    },
+
+    copyCompanyId() {
+        if (!this.currentCompanyId) {
+            alert('No Company ID available');
+            return;
+        }
+        
+        navigator.clipboard.writeText(this.currentCompanyId).then(() => {
+            if (window.App) {
+                App.showToast('✅ Company ID copied to clipboard!', 'success');
+            } else {
+                alert('✅ Company ID copied!');
+            }
+        }).catch(err => {
+            alert('❌ Failed to copy: ' + err);
+        });
+    },
+
+    copyEmployeeId(employeeId) {
+        if (!employeeId) return;
+        
+        navigator.clipboard.writeText(employeeId).then(() => {
+            if (window.App) {
+                App.showToast(`✅ Employee ID "${employeeId}" copied!`, 'success');
+            } else {
+                alert(`✅ Employee ID "${employeeId}" copied!`);
+            }
+        }).catch(err => {
+            alert('❌ Failed to copy: ' + err);
+        });
+    },
+
+    scrollToCredentials() {
+        const credentialsCard = document.getElementById('employeeCredentialsList');
+        if (credentialsCard) {
+            // Toggle visibility
+            if (credentialsCard.style.display === 'none') {
+                credentialsCard.style.display = 'block';
+                setTimeout(() => {
+                    credentialsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                credentialsCard.style.display = 'none';
+            }
+        }
+    },
+
+    showCredentialsModal() {
+        const credentialsCard = document.getElementById('credentialsCard');
+        if (credentialsCard) {
+            // Toggle visibility
+            if (credentialsCard.style.display === 'none') {
+                credentialsCard.style.display = 'block';
+                // Reload credentials data
+                this.loadCompanyIdAndEmployees();
+                setTimeout(() => {
+                    credentialsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                credentialsCard.style.display = 'none';
+            }
+        }
     },
 
     refresh() {

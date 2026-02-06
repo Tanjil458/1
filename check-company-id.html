@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Company ID</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+        .company-id {
+            font-size: 32px;
+            color: #28a745;
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 18px;
+            padding: 20px;
+        }
+        .error {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .copy-btn {
+            background: #28a745;
+            font-size: 14px;
+            padding: 8px 16px;
+            width: auto;
+            margin-top: 10px;
+            margin-left: 10px;
+            display: inline-block;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+            margin-top: 30px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+            color: #0d47a1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Company ID Checker</h1>
+        <p>This page shows your Company ID for the MimiPro Employee App. Use this ID to login.</p>
+        
+        <div id="loading" class="loading">
+            Loading Firebase...
+        </div>
+        
+        <div id="result" style="display: none;"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Firebase Configuration (same as your admin app)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwlN548N9A0uRKiRGdvxmoASFCfJtvmo0",
+            authDomain: "mimipro-0458.firebaseapp.com",
+            projectId: "mimipro-0458",
+            storageBucket: "mimipro-0458.firebasestorage.app",
+            messagingSenderId: "414929851648",
+            appId: "1:414929851648:web:535b52279d5e894bfd8fe5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Check auth state
+        auth.onAuthStateChanged(async (user) => {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            if (user) {
+                const fullUserId = user.uid;
+                const companyId = fullUserId; // Full UID for Firestore query
+                const displayId = fullUserId.substring(0, 8).toUpperCase(); // Short version for display
+                
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                
+                // Check if employee data exists
+                try {
+                    const snapshot = await db.collection('users')
+                        .doc(fullUserId)
+                        .collection('employees')
+                        .limit(1)
+                        .get();
+                    
+                    const employeeCount = await db.collection('users')
+                        .doc(fullUserId)
+                        .collection('employees')
+                        .get()
+                        .then(s => s.size);
+                    
+                    result.innerHTML = `
+                        <div class="info-box success">
+                            <div class="label">✅ Signed in as:</div>
+                            <div class="value" style="font-size: 16px;">${user.email}</div>
+                        </div>
+                        
+                        <div class="info-box">
+                            <div class="label">🏢 Your Company ID (for Employee Login):</div>
+                            <div class="value company-id">${fullUserId}</div>
+                            <button class="copy-btn" onclick="copyToClipboard('${fullUserId}')">📋 Copy Full ID</button>
+                        </div>
+                        
+                        <div class="info-box">
+                            <div class="label">📝 Short Display ID (shown in admin app):</div>
+                            <div class="value">${displayId}</div>
+                            <div style="margin-top: 10px; color: #666; font-size: 14px;">
+                                ⚠️ <strong>Important:</strong> For Employee Login, use the FULL Company ID above, not this short version!
+                            </div>
+                        </div>
+                        
+                        <div class="info-box ${employeeCount > 0 ? 'success' : 'error'}">
+                            <div class="label">👥 Employees in Firestore:</div>
+                            <div class="value" style="font-size: 20px;">${employeeCount} employee(s)</div>
+                            ${employeeCount === 0 ? '<div style="margin-top: 10px; color: #856404;">⚠️ No employees found. Add an employee in admin app and SYNC!</div>' : ''}
+                        </div>
+                        
+                        <div class="info-box instructions">
+                            <strong>📋 How to use:</strong>
+                            <ol>
+                                <li>Copy the <strong>Full Company ID</strong> above</li>
+                                <li>Give it to employees along with their Employee ID (e.g., EMP001)</li>
+                                <li>Employees enter: Company ID + Employee ID + Password</li>
+                                <li>Make sure to SYNC in admin app after creating employees!</li>
+                            </ol>
+                        </div>
+                    `;
+                } catch (error) {
+                    result.innerHTML = `
+                        <div class="info-box success">
+                            <div class="label">✅ Signed in as:</div>
+                            <div class="value" style="font-size: 16px;">${user.email}</div>
+                        </div>
+                        
+                        <div class="info-box">
+                            <div class="label">🏢 Your Company ID:</div>
+                            <div class="value company-id">${fullUserId}</div>
+                            <button class="copy-btn" onclick="copyToClipboard('${fullUserId}')">📋 Copy</button>
+                        </div>
+                        
+                        <div class="info-box error">
+                            <div class="label">⚠️ Error checking employees:</div>
+                            <div style="margin-top: 10px; color: #856404;">${error.message}</div>
+                            <div style="margin-top: 10px; font-size: 14px;">
+                                This might be a Firestore permissions issue. Check the Firebase Console.
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <div class="info-box error">
+                        <strong>⚠️ Not Signed In</strong>
+                        <p style="margin-top: 10px;">You need to sign in to your admin app first, then refresh this page.</p>
+                    </div>
+                    <button onclick="window.location.href='index.html'">Go to Admin App</button>
+                `;
+            }
+        });
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Company ID copied to clipboard!');
+            }).catch(err => {
+                alert('❌ Failed to copy: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -71,8 +71,9 @@ const EmployeeListingModule = {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Login Password</label>
-                            <input id="empPassword" type="password" placeholder="Set password">
+                            <label class="form-label">Login Password (for Employee App)</label>
+                            <input id="empPassword" type="password" placeholder="Set password for employee">
+                            <small style="color: var(--muted); font-size: 12px; margin-top: 4px; display: block;">Employee will use this to login to the Employee App</small>
                         </div>
                     </div>
                     <div class="modal-actions">
@@ -164,11 +165,12 @@ const EmployeeListingModule = {
 
         document.getElementById('empModalTitle').textContent = 'Edit Employee';
         document.getElementById('empName').value = emp.name;
-        document.getElementById('empMobile').value = emp.mobile;
+        document.getElementById('empMobile').value = emp.mobile || emp.phone || '';
         document.getElementById('empRole').value = emp.role;
         document.getElementById('empSalary').value = emp.salary;
         document.getElementById('empSalaryType').value = emp.salaryType;
-        document.getElementById('empPassword').value = emp.loginPassword || '';
+        document.getElementById('empPassword').value = '';
+        document.getElementById('empPassword').placeholder = 'Leave blank to keep current password';
 
         document.getElementById('employeeModal').classList.add('show');
     },
@@ -190,15 +192,84 @@ const EmployeeListingModule = {
             return;
         }
 
-        const employeeData = { name, mobile, role, salary, salaryType, loginPassword, active: true };
-        console.log('✅ Validation passed, saving:', employeeData);
+        if (!loginPassword && this.editIndex === -1) {
+            App.showToast('Please set a password for employee login', 'warning');
+            return;
+        }
 
         try {
+            // Get current user ID from Firebase Auth
+            let userId;
+            
+            if (window.FirebaseAuth && window.FirebaseAuth.currentUser) {
+                userId = window.FirebaseAuth.currentUser.uid;
+            } else if (window.FirebaseSync && window.FirebaseSync.currentUser) {
+                userId = window.FirebaseSync.currentUser.uid;
+            } else {
+                // User not signed in - check if working offline
+                const localUserId = localStorage.getItem('localUserId');
+                if (localUserId) {
+                    userId = localUserId;
+                } else {
+                    // Generate a local user ID for offline use
+                    userId = 'local_' + Date.now();
+                    localStorage.setItem('localUserId', userId);
+                    console.warn('⚠️ No Firebase user signed in. Using local user ID for offline mode.');
+                    App.showToast('Working in offline mode. Sign in to sync with cloud.', 'warning', 4000);
+                }
+            }
+
+            // Generate employee ID
+            let employeeId;
+            if (this.editIndex === -1) {
+                const count = this.employees.length + 1;
+                employeeId = `EMP${String(count).padStart(3, '0')}`;
+            } else {
+                employeeId = this.employees[this.editIndex].employeeId;
+            }
+
+            // Hash password if provided (SHA-256)
+            let passwordHash;
+            if (loginPassword) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(loginPassword);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            const employeeData = {
+                userId: userId,
+                employeeId: employeeId,
+                name: name,
+                phone: mobile,
+                mobile: mobile,
+                role: role,
+                salary: salary,
+                salaryType: salaryType,
+                status: 'active',
+                active: true
+            };
+
+            // Add password hash if provided
+            if (passwordHash) {
+                employeeData.passwordHash = passwordHash;
+            }
+
+            console.log('✅ Validation passed, saving:', employeeData);
+
             if (this.editIndex === -1) {
                 console.log('➕ Adding new employee to DB...');
                 const id = await DB.add('employees', employeeData);
                 console.log('✅ Employee added with ID:', id);
-                App.showToast('Employee added successfully', 'success');
+                
+                // Show credentials to admin
+                const companyId = userId.substring(0, 8).toUpperCase();
+                App.showToast(
+                    `Employee Added!\n\nCompany ID: ${companyId}\nEmployee ID: ${employeeId}\nPassword: ${loginPassword}\n\nGive these credentials to the employee.`,
+                    'success',
+                    8000
+                );
             } else {
                 employeeData.id = this.employees[this.editIndex].id;
                 console.log('✏️ Updating employee with ID:', employeeData.id);

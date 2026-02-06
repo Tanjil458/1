@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>MimiPro Employee - Login</title>
+    
+    <link rel="stylesheet" href="assets/css/base.css">
+    <link rel="stylesheet" href="assets/css/login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-section">
+            <h1><span class="brand-name">Mimi</span><span class="brand-pro">Pro</span></h1>
+            <p>Employee Portal</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="companyId">Company ID</label>
+                <input 
+                    type="text" 
+                    id="companyId" 
+                    class="form-input" 
+                    placeholder="Enter company ID"
+                    required
+                    autocomplete="off"
+                >
+                <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Ask your supervisor for Company ID</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="employeeId">Employee ID</label>
+                <input 
+                    type="text" 
+                    id="employeeId" 
+                    class="form-input" 
+                    placeholder="Enter your employee ID"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="form-input" 
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                <span id="loginBtnText">Login</span>
+                <div class="loading-spinner" id="loginSpinner"></div>
+            </button>
+        </form>
+
+        <p class="info-text">
+            Contact your supervisor if you forgot your password
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2026 MimiPro. All rights reserved.</p>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Auth Script -->
+    <script src="auth/employee-auth.js"></script>
+</body>
+</html>
