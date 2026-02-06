@@ -55,8 +55,10 @@ If you see these messages, **everything is working!** 🎉
 
 | File | What It Does |
 |------|-------------|
-| `migrate-attendance-data.html` | Fix old data (if needed) |
-| `TESTING_GUIDE.md` | Step-by-step testing instructions |
+| `migrate-attendance-data.html` | Fix old attendance data (if needed) |
+| `migrate-advances-data.html` | Fix old advances data (if needed) |
+| `TESTING_GUIDE.md` | Step-by-step testing instructions for attendance |
+| `TESTING_GUIDE_SYNC_FIXES.md` | Testing guide for advances & days worked |
 | `FIX_SUMMARY.md` | Complete technical documentation |
 | `EMPLOYEE_LOGIN_GUIDE.md` | Employee login credentials |
 | `FIRESTORE_RULES.md` | Security rules setup |
