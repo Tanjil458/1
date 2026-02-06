@@ -286,7 +286,7 @@ const SyncModule = {
 
             console.log(`✅ Pushed ${storeName}/${data.id} to cloud`);
             
-            // Extra logging for attendance to help debug
+            // Extra logging for attendance and advances to help debug
             if (storeName === 'attendance') {
                 console.log(`📊 Attendance Details:`, {
                     id: data.id,
@@ -294,6 +294,19 @@ const SyncModule = {
                     employeeIdType: typeof data.employeeId,
                     date: data.date,
                     path: `users/${companyId}/attendance/${data.id}`
+                });
+            }
+            
+            if (storeName === 'advances') {
+                console.log(`💰 Advance Details:`, {
+                    id: data.id,
+                    employeeId: data.employeeId,
+                    employeeIdType: typeof data.employeeId,
+                    amount: data.amount,
+                    date: data.date,
+                    reason: data.reason || data.note,
+                    status: data.status,
+                    path: `users/${companyId}/advances/${data.id}`
                 });
             }
         } catch (error) {

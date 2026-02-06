@@ -55,7 +55,7 @@ function showError(message) {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const companyId = document.getElementById('companyId').value.trim();
+    let companyId = document.getElementById('companyId').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
     const password = document.getElementById('password').value;
     const loginBtn = document.getElementById('loginBtn');
@@ -65,6 +65,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     if (!companyId || !employeeId || !password) {
         showError('Please enter Company ID, Employee ID and Password');
         return;
+    }
+    
+    // If short company ID provided (8 chars), expand to full ID
+    // Short ID: 5ti4r7Rz -> Full ID: 5ti4r7RzNhSLJQ5Wmx0rwQ5qhJn2
+    if (companyId.length === 8 && companyId === '5ti4r7Rz') {
+        companyId = '5ti4r7RzNhSLJQ5Wmx0rwQ5qhJn2';
+        console.log('✅ Short company ID detected, using full ID');
     }
     
     // Show loading state

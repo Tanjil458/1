@@ -297,11 +297,13 @@ const AdvancesModule = {
 
 		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
 		await DB.add('advances', {
-			employeeId,
+			employeeId: String(employeeId), // Always store as string for Firestore compatibility
 			employeeName: employee?.name || '',
 			amount,
 			date,
 			note,
+			reason: note, // Add reason field for employee app display
+			status: 'pending', // Default status
 			type: 'cash'
 		});
 
@@ -326,8 +328,25 @@ const AdvancesModule = {
 		}
 
 		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+		
+		// Store product advance as a regular advance with amount=totalValue
+		await DB.add('advances', {
+			employeeId: String(employeeId), // Always store as string for Firestore compatibility
+			employeeName: employee?.name || '',
+			amount: totalValue, // Store total value as amount for employee app
+			date,
+			reason: `Product: ${productName} (${quantity} × ৳${unitPrice})`, // Detailed reason
+			status: 'pending', // Default status
+			type: 'product',
+			// Keep product details for admin view
+			productName,
+			quantity,
+			unitPrice
+		});
+		
+		// Also save to productAdvances for admin tracking
 		await DB.add('productAdvances', {
-			employeeId,
+			employeeId: String(employeeId),
 			employeeName: employee?.name || '',
 			productName,
 			quantity,
@@ -360,7 +379,7 @@ const AdvancesModule = {
 
 		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
 		await DB.add('repayments', {
-			employeeId,
+			employeeId: String(employeeId), // Always store as string for Firestore compatibility
 			employeeName: employee?.name || '',
 			amount,
 			date,

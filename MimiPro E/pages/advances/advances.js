@@ -10,10 +10,28 @@ const Advances = {
             
             const employeeId = session.employeeId;
             console.log('💰 Advances: Loading data for employee:', employeeId);
+            console.log('💰 Employee ID type:', typeof employeeId);
 
             // Get advances data
-            const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => adv.employeeId === employeeId);
+            const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => String(adv.employeeId) === String(employeeId));
             console.log('💰 Loaded', allAdvances.length, 'advance records');
+            
+            // Log sample for debugging
+            if (allAdvances.length > 0) {
+                console.log('💰 Sample advance:', {
+                    id: allAdvances[0].id,
+                    employeeId: allAdvances[0].employeeId,
+                    employeeIdType: typeof allAdvances[0].employeeId,
+                    amount: allAdvances[0].amount,
+                    date: allAdvances[0].date,
+                    reason: allAdvances[0].reason
+                });
+            }
+
+            // Get attendance data to calculate days worked
+            const allAttendance = (await employeeDB.getAll(STORES.ATTENDANCE)).filter(att => String(att.employeeId) === String(employeeId));
+            const daysWorked = allAttendance.length;
+            console.log('📅 Days worked:', daysWorked);
 
             // Sort by date descending
            allAdvances.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -42,6 +60,10 @@ const Advances = {
                 <div class="summary-row">
                     <span class="summary-label">Pending</span>
                     <span class="summary-value text-warning">${MoneyUtils.formatMoney(pendingAdvances)}</span>
+                </div>
+                <div class="summary-row" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
+                    <span class="summary-label">Days Worked (Total)</span>
+                    <span class="summary-value" style="color: var(--primary);">${daysWorked}</span>
                 </div>
             </div>
 
