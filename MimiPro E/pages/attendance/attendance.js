@@ -245,6 +245,7 @@ const Attendance = {
             console.log('📡 Employee requesting attendance from Firestore:', {
                 companyId: session.companyId,
                 employeeId: this.employeeId,
+                employeeIdType: typeof this.employeeId,
                 monthKey: monthKey
             });
 
@@ -252,6 +253,18 @@ const Attendance = {
             if (typeof FirestoreService !== 'undefined' && FirestoreService.getEmployeeAttendance) {
                 const records = await FirestoreService.getEmployeeAttendance(session.companyId, this.employeeId);
                 console.log(`✅ Employee attendance page received: ${records.length} records`);
+                
+                // Log sample record for debugging
+                if (records.length > 0) {
+                    console.log('📋 Sample attendance record:', {
+                        id: records[0].id,
+                        employeeId: records[0].employeeId,
+                        employeeIdType: typeof records[0].employeeId,
+                        date: records[0].date,
+                        status: records[0].status
+                    });
+                }
+                
                 return records;
             } else {
                 console.error('❌ FirestoreService not available');

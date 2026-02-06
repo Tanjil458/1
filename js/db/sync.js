@@ -285,6 +285,17 @@ const SyncModule = {
             }, { merge: true });
 
             console.log(`✅ Pushed ${storeName}/${data.id} to cloud`);
+            
+            // Extra logging for attendance to help debug
+            if (storeName === 'attendance') {
+                console.log(`📊 Attendance Details:`, {
+                    id: data.id,
+                    employeeId: data.employeeId,
+                    employeeIdType: typeof data.employeeId,
+                    date: data.date,
+                    path: `users/${companyId}/attendance/${data.id}`
+                });
+            }
         } catch (error) {
             console.error(`❌ Failed to push ${storeName}/${data.id}:`, error);
             

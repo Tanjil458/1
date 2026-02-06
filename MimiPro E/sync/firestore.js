@@ -48,7 +48,11 @@ const FirestoreService = {
     async getEmployeeAttendance(companyId, employeeId) {
         try {
             console.log('📥 Fetching attendance for:', { companyId, employeeId });
-            console.log('📋 Data types:', { companyIdType: typeof companyId, employeeIdType: typeof employeeId });
+            console.log('📋 Data types:', { 
+                companyIdType: typeof companyId, 
+                employeeIdType: typeof employeeId,
+                employeeIdValue: employeeId
+            });
             
             // Query from shared companyId path
             const snapshot = await firestoreDB.collection('users')
@@ -59,6 +63,17 @@ const FirestoreService = {
             
             const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             console.log('✅ Fetched', results.length, 'attendance records');
+            
+            // Log details of each record for debugging
+            results.forEach((rec, idx) => {
+                console.log(`  Record ${idx + 1}:`, {
+                    id: rec.id,
+                    employeeId: rec.employeeId,
+                    employeeIdType: typeof rec.employeeId,
+                    date: rec.date
+                });
+            });
+            
             return results;
             
         } catch (error) {

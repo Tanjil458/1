@@ -316,7 +316,7 @@ const AttendanceModule = {
 			} else if (!isPresent) {
 				const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
 				await DB.add('attendance', {
-					employeeId,
+					employeeId: String(employeeId),  // Always store as string for consistency
 					employeeName: employee?.name || '',
 					date: dateKey,
 					status: 'present',
