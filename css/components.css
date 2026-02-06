@@ -1479,3 +1479,241 @@
         opacity: 1;
     }
 }
+
+/* ====================== */
+/* DARK THEME COMPONENTS */
+/* ====================== */
+
+/* Delete Modal Dark Theme */
+body.dark-theme .delete-overlay {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+body.dark-theme .delete-modal {
+    background: #1F2937;
+    color: #F3F4F6;
+}
+
+body.dark-theme .delete-icon {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+body.dark-theme .delete-title {
+    color: #F3F4F6;
+}
+
+body.dark-theme .delete-message {
+    color: #9CA3AF;
+}
+
+body.dark-theme .delete-item-name {
+    background: #111827;
+    color: #F3F4F6;
+}
+
+body.dark-theme .delete-actions .delete-confirm-btn.cancel {
+    background: #374151;
+    color: #D1D5DB;
+}
+
+body.dark-theme .delete-actions .delete-confirm-btn.cancel:hover {
+    background: #4B5563;
+}
+
+/* Stats Grid */
+body.dark-theme .stats-grid .stat-card {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+body.dark-theme .stat-icon {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818CF8;
+}
+
+/* Checkbox & Radio */
+body.dark-theme input[type="checkbox"],
+body.dark-theme input[type="radio"] {
+    border-color: #4B5563;
+}
+
+body.dark-theme input[type="checkbox"]:checked,
+body.dark-theme input[type="radio"]:checked {
+    background: #6366F1;
+    border-color: #6366F1;
+}
+
+/* Select Dropdown */
+body.dark-theme select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+}
+
+/* Tabs Component */
+body.dark-theme .tabs {
+    border-bottom-color: #374151;
+}
+
+body.dark-theme .tab {
+    color: #9CA3AF;
+}
+
+body.dark-theme .tab.active {
+    color: #818CF8;
+    border-bottom-color: #818CF8;
+}
+
+/* Progress Bar */
+body.dark-theme .progress-bar {
+    background: #374151;
+}
+
+body.dark-theme .progress-fill {
+    background: #6366F1;
+}
+
+/* Chips/Pills */
+body.dark-theme .chip,
+body.dark-theme .pill {
+    background: #374151;
+    color: #D1D5DB;
+}
+
+/* Alert/Notice Boxes */
+body.dark-theme .alert {
+    background: #1F2937;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+body.dark-theme .alert.success {
+    background: #064e3b;
+    border-color: #065f46;
+    color: #6ee7b7;
+}
+
+body.dark-theme .alert.warning {
+    background: #78350f;
+    border-color: #92400e;
+    color: #fbbf24;
+}
+
+body.dark-theme .alert.error {
+    background: #7f1d1d;
+    border-color: #991b1b;
+    color: #fca5a5;
+}
+
+body.dark-theme .alert.info {
+    background: #1e3a8a;
+    border-color: #1e40af;
+    color: #93c5fd;
+}
+
+/* Loading Spinner */
+body.dark-theme .spinner {
+    border-color: #374151;
+    border-top-color: #818CF8;
+}
+
+/* Breadcrumbs */
+body.dark-theme .breadcrumb {
+    color: #9CA3AF;
+}
+
+body.dark-theme .breadcrumb a {
+    color: #818CF8;
+}
+
+body.dark-theme .breadcrumb a:hover {
+    color: #A5B4FC;
+}
+
+/* Dropdown Menu */
+body.dark-theme .dropdown-menu {
+    background: #1F2937;
+    border-color: #374151;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-theme .dropdown-item {
+    color: #D1D5DB;
+}
+
+body.dark-theme .dropdown-item:hover {
+    background: #374151;
+    color: #F3F4F6;
+}
+
+/* Pagination */
+body.dark-theme .pagination button {
+    background: #1F2937;
+    color: #D1D5DB;
+    border-color: #374151;
+}
+
+body.dark-theme .pagination button:hover:not(:disabled) {
+    background: #374151;
+    color: #F3F4F6;
+}
+
+body.dark-theme .pagination button.active {
+    background: #6366F1;
+    color: white;
+    border-color: #6366F1;
+}
+
+/* Search Box */
+body.dark-theme .search-box {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+body.dark-theme .search-box input {
+    background: transparent;
+    color: #F3F4F6;
+}
+
+body.dark-theme .search-box input::placeholder {
+    color: #6B7280;
+}
+
+/* Accordion */
+body.dark-theme .accordion-header {
+    background: #1F2937;
+    color: #F3F4F6;
+    border-color: #374151;
+}
+
+body.dark-theme .accordion-header:hover {
+    background: #374151;
+}
+
+body.dark-theme .accordion-body {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+/* Code/Pre Blocks */
+body.dark-theme pre,
+body.dark-theme code {
+    background: #111827;
+    color: #E5E7EB;
+    border-color: #374151;
+}
+
+/* Tooltips */
+body.dark-theme .tooltip {
+    background: #1F2937;
+    color: #F3F4F6;
+    border: 1px solid #374151;
+}
+
+/* Links */
+body.dark-theme a {
+    color: #818CF8;
+}
+
+body.dark-theme a:hover {
+    color: #A5B4FC;
+}

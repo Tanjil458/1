@@ -15,6 +15,7 @@ const App = {
     init() {
         console.log('🚀 MimiPro App initializing...');
         
+        this.applyTheme(); // Apply saved theme
         this.setupNavigation();
         this.setupEventListeners();
         this.loadModules();
@@ -308,8 +309,16 @@ const App = {
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 200);
-        }, 2500);
-    },
+        }, 2500);    },
+
+    // Theme management
+    applyTheme() {
+        const isDark = localStorage.getItem('darkTheme') === 'true';
+        if (isDark) {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }    },
 
     showModal(title, content, actions = []) {
         // TODO: Implement modal system

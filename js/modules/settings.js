@@ -3,7 +3,11 @@
  */
 
 const SettingsModule = {
+    currentExportData: null,
+    currentExportFileName: null,
+
     init() {
+        this.initTheme(); // Apply saved theme
         this.render();
         this.bindEvents();
     },
@@ -264,6 +268,84 @@ const SettingsModule = {
                     `}
                 </div>
                 
+                <!-- Appearance Section -->
+                <div class="account-section">
+                    <div class="account-header">
+                        <div class="account-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🎨</div>
+                        <div class="account-title">
+                            <h3>Appearance</h3>
+                            <p>Customize app theme</p>
+                        </div>
+                    </div>
+                    
+                    <div class="theme-toggle-container">
+                        <div class="theme-option">
+                            <div class="theme-option-info">
+                                <strong>🌙 Dark Theme</strong>
+                                <p style="font-size: 13px; color: #718096; margin: 4px 0 0 0;">Reduce eye strain in low light</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="darkThemeToggle" ${this.isDarkTheme() ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management Section -->
+                <div class="account-section">
+                    <div class="account-header">
+                        <div class="account-icon" style="background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%);">💾</div>
+                        <div class="account-title">
+                            <h3>Data Management</h3>
+                            <p>Backup and restore your data</p>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="exportDataBtn">
+                            📥 Export Data
+                        </button>
+                        <button class="btn btn-secondary" id="importDataBtn">
+                            📤 Import Data
+                        </button>
+                    </div>
+                    
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;" />
+                    
+                    <p style="font-size: 12px; color: #718096; margin-top: 12px; line-height: 1.5;">
+                        Export creates a JSON file with all your data. Import restores data from a previously exported file.
+                    </p>
+                </div>
+
+                <!-- Export Modal -->
+                <div class="modal" id="exportModal">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3 class="modal-title">📥 Exported Data</h3>
+                            <button class="modal-close" id="closeExportModal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin-bottom: 12px; font-size: 14px; color: #718096;">
+                                Copy the JSON data below and save it to a file, or use the download button.
+                            </p>
+                            <textarea 
+                                id="exportDataText" 
+                                readonly 
+                                style="width: 100%; height: 300px; font-family: monospace; font-size: 12px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 6px; resize: vertical;"
+                            ></textarea>
+                            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                <button class="btn btn-primary" id="saveToDownloadsBtn" style="flex: 1;">
+                                    💾 Save to Downloads
+                                </button>
+                                <button class="btn btn-secondary" id="shareExportBtn" style="flex: 1;">
+                                    📤 Share File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- App Information -->
                 <div class="account-section">
                     <div class="info-card">
@@ -272,10 +354,7 @@ const SettingsModule = {
                             <span>Version</span>
                             <strong>1.0.0</strong>
                         </div>
-                        <div class="info-row">
-                            <span>Storage</span>
-                            <strong>IndexedDB + Firestore</strong>
-                        </div>
+                        
                         <div class="info-row">
                             <span>Offline Mode</span>
                             <strong>✅ Enabled</strong>
@@ -369,6 +448,82 @@ const SettingsModule = {
                     .auth-form {
                         margin-top: 20px;
                     }
+                    
+                    .theme-toggle-container {
+                        margin-top: 16px;
+                    }
+                    
+                    .theme-option {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 12px;
+                        background: #f7fafc;
+                        border-radius: 8px;
+                    }
+                    
+        const darkThemeToggle = document.getElementById('darkThemeToggle');
+
+        // Dark theme toggle
+        if (darkThemeToggle) {
+            darkThemeToggle.addEventListener('change', (e) => {
+                this.toggleDarkTheme(e.target.checked);
+            });
+        }
+                    .theme-option-info {
+                        flex: 1;
+                    }
+                    
+                    .theme-option-info strong {
+                        font-size: 15px;
+                        color: #2d3748;
+                    }
+                    
+                    .toggle-switch {
+                        position: relative;
+                        display: inline-block;
+                        width: 52px;
+                        height: 28px;
+                        margin: 0;
+                    }
+                    
+                    .toggle-switch input {
+                        opacity: 0;
+                        width: 0;
+                        height: 0;
+                    }
+                    
+                    .toggle-slider {
+                        position: absolute;
+                        cursor: pointer;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: #cbd5e0;
+                        transition: 0.3s;
+                        border-radius: 28px;
+                    }
+                    
+                    .toggle-slider:before {
+                        position: absolute;
+                        content: "";
+                        height: 22px;
+                        width: 22px;
+                        left: 3px;
+                        bottom: 3px;
+                        background-color: white;
+                        transition: 0.3s;
+                        border-radius: 50%;
+                    }
+                    
+                    input:checked + .toggle-slider {
+                        background-color: #667eea;
+                    }
+                    
+                    input:checked + .toggle-slider:before {
+                        transform: translateX(24px);
+                    }
                 </style>
             </section>
         `;
@@ -383,6 +538,67 @@ const SettingsModule = {
         const authForm = document.getElementById('authForm');
         const signOutBtn = document.getElementById('signOutBtn');
         const syncNowBtn = document.getElementById('syncNowBtn');
+        const darkThemeToggle = document.getElementById('darkThemeToggle');
+        const exportDataBtn = document.getElementById('exportDataBtn');
+        const importDataBtn = document.getElementById('importDataBtn');
+        const importFileInput = document.getElementById('importFileInput');
+        const closeExportModal = document.getElementById('closeExportModal');
+        const saveToDownloadsBtn = document.getElementById('saveToDownloadsBtn');
+        const shareExportBtn = document.getElementById('shareExportBtn');
+        const exportModal = document.getElementById('exportModal');
+
+        // Dark theme toggle
+        if (darkThemeToggle) {
+            darkThemeToggle.addEventListener('change', (e) => {
+                this.toggleDarkTheme(e.target.checked);
+            });
+        }
+
+        // Export data
+        if (exportDataBtn) {
+            exportDataBtn.addEventListener('click', () => this.handleExportData());
+        }
+
+        // Close export modal
+        if (closeExportModal) {
+            closeExportModal.addEventListener('click', () => this.closeExportModal());
+        }
+
+        if (exportModal) {
+            exportModal.addEventListener('click', (e) => {
+                if (e.target === exportModal) {
+                    this.closeExportModal();
+                }
+            });
+        }
+
+        // Save to Downloads
+        if (saveToDownloadsBtn) {
+            saveToDownloadsBtn.addEventListener('click', () => this.saveToDownloads());
+        }
+
+        // Share export data
+        if (shareExportBtn) {
+            shareExportBtn.addEventListener('click', () => this.shareExportFile());
+        }
+
+        // Import data
+        if (importDataBtn) {
+            importDataBtn.addEventListener('click', () => {
+                // Check if Android interface is available
+                if (typeof AndroidFile !== 'undefined' && AndroidFile.pickFile) {
+                    // Use Android native file picker
+                    AndroidFile.pickFile();
+                } else {
+                    // Fallback to HTML file input
+                    if (importFileInput) importFileInput.click();
+                }
+            });
+        }
+
+        if (importFileInput) {
+            importFileInput.addEventListener('change', (e) => this.handleImportData(e));
+        }
 
         // Open auth modal
         if (openAuthModalBtn) {
@@ -627,6 +843,268 @@ const SettingsModule = {
     isValidEmail(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
+    },
+
+    // Dark theme methods
+    isDarkTheme() {
+        return localStorage.getItem('darkTheme') === 'true' || false;
+    },
+
+    toggleDarkTheme(enabled) {
+        localStorage.setItem('darkTheme', enabled);
+        this.applyTheme(enabled);
+        App.showToast(enabled ? '🌙 Dark theme enabled' : '☀️ Light theme enabled', 'success');
+    },
+
+    applyTheme(dark) {
+        if (dark) {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }
+    },
+
+    initTheme() {
+        // Apply saved theme on page load
+        if (this.isDarkTheme()) {
+            this.applyTheme(true);
+        }
+    },
+
+    // Data Export/Import methods
+    async handleExportData() {
+        const exportBtn = document.getElementById('exportDataBtn');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '⏳ Exporting...';
+        }
+
+        try {
+            const allData = {};
+            const stores = Object.values(DB.stores);
+
+            // Collect all data from all stores
+            for (const storeName of stores) {
+                try {
+                    const data = await DB.getAll(storeName);
+                    allData[storeName] = data;
+                    console.log(`✅ Exported ${data.length} items from ${storeName}`);
+                } catch (error) {
+                    console.error(`Failed to export ${storeName}:`, error);
+                    allData[storeName] = [];
+                }
+            }
+
+            // Add metadata
+            const exportData = {
+                version: '1.0.0',
+                appName: 'MimiPro',
+                exportDate: new Date().toISOString(),
+                data: allData
+            };
+
+            // Store the export data
+            const jsonString = JSON.stringify(exportData, null, 2);
+            this.currentExportData = jsonString;
+            this.currentExportFileName = `mimipro-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+            // Show the export modal with the data
+            this.showExportModal(jsonString);
+
+            App.showToast('✅ Data exported successfully!', 'success');
+        } catch (error) {
+            console.error('Export failed:', error);
+            App.showToast('❌ Export failed: ' + error.message, 'error');
+        } finally {
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = '📥 Export Data';
+            }
+        }
+    },
+
+    showExportModal(jsonString) {
+        const modal = document.getElementById('exportModal');
+        const textarea = document.getElementById('exportDataText');
+        
+        if (modal && textarea) {
+            textarea.value = jsonString;
+            modal.classList.add('show');
+        }
+    },
+
+    closeExportModal() {
+        const modal = document.getElementById('exportModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    saveToDownloads() {
+        if (!this.currentExportData || !this.currentExportFileName) {
+            App.showToast('❌ No data to save', 'error');
+            return;
+        }
+
+        // Check if Android interface is available
+        if (typeof AndroidFile !== 'undefined' && AndroidFile.saveFile) {
+            try {
+                AndroidFile.saveFile(this.currentExportFileName, this.currentExportData);
+                this.closeExportModal();
+            } catch (error) {
+                console.error('Failed to save file:', error);
+                App.showToast('❌ Failed to save file', 'error');
+            }
+        } else {
+            // Fallback to browser download
+            this.downloadExportData();
+        }
+    },
+
+    shareExportFile() {
+        if (!this.currentExportData || !this.currentExportFileName) {
+            App.showToast('❌ No data to share', 'error');
+            return;
+        }
+
+        // Check if Android interface is available
+        if (typeof AndroidFile !== 'undefined' && AndroidFile.shareFile) {
+            try {
+                AndroidFile.shareFile(this.currentExportFileName, this.currentExportData);
+                this.closeExportModal();
+            } catch (error) {
+                console.error('Failed to share file:', error);
+                App.showToast('❌ Failed to share file', 'error');
+            }
+        } else {
+            App.showToast('❌ Share not available in browser', 'warning');
+        }
+    },
+
+    downloadExportData() {
+        if (!this.currentExportData) return;
+
+        try {
+            const blob = new Blob([this.currentExportData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = this.currentExportFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            App.showToast('✅ Download started!', 'success');
+            this.closeExportModal();
+        } catch (error) {
+            console.error('Download failed:', error);
+            App.showToast('❌ Download failed', 'error');
+        }
+    },
+
+    async handleImportData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Reset the file input
+        event.target.value = '';
+
+        if (!file.name.endsWith('.json')) {
+            App.showToast('❌ Please select a JSON file', 'error');
+            return;
+        }
+
+        try {
+            const text = await file.text();
+            await this.processImportData(text);
+        } catch (error) {
+            console.error('Import failed:', error);
+            App.showToast('❌ Import failed: ' + error.message, 'error');
+            this.resetImportButton();
+        }
+    },
+
+    // Called by Android with file content
+    async processImportData(jsonString) {
+        const importBtn = document.getElementById('importDataBtn');
+        if (importBtn) {
+            importBtn.disabled = true;
+            importBtn.innerHTML = '⏳ Importing...';
+        }
+
+        try {
+            const importData = JSON.parse(jsonString);
+
+            // Validate data structure
+            if (!importData.data || typeof importData.data !== 'object') {
+                throw new Error('Invalid backup file format');
+            }
+
+            // Confirm with user
+            const confirm = window.confirm(
+                `Import data from backup created on ${new Date(importData.exportDate).toLocaleDateString()}?\n\n` +
+                `This will REPLACE all existing data!\n\n` +
+                `Click OK to continue or Cancel to abort.`
+            );
+
+            if (!confirm) {
+                App.showToast('Import cancelled', 'info');
+                this.resetImportButton();
+                return;
+            }
+
+            let importedCount = 0;
+            const stores = Object.values(DB.stores);
+
+            // Clear existing data and import new data
+            for (const storeName of stores) {
+                try {
+                    // Clear existing data
+                    await DB.clear(storeName);
+                    
+                    // Import new data if available
+                    if (importData.data[storeName] && Array.isArray(importData.data[storeName])) {
+                        const items = importData.data[storeName];
+                        
+                        for (const item of items) {
+                            await DB.put(storeName, item);
+                            importedCount++;
+                        }
+                        
+                        console.log(`✅ Imported ${items.length} items to ${storeName}`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to import ${storeName}:`, error);
+                }
+            }
+
+            App.showToast(`✅ Successfully imported ${importedCount} items!`, 'success');
+            
+            // Refresh the current page to show new data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+
+        } catch (error) {
+            console.error('Import failed:', error);
+            App.showToast('❌ Import failed: ' + error.message, 'error');
+            this.resetImportButton();
+        }
+    },
+
+    onImportCancelled() {
+        App.showToast('Import cancelled', 'info');
+        this.resetImportButton();
+    },
+
+    resetImportButton() {
+        const importBtn = document.getElementById('importDataBtn');
+        if (importBtn) {
+            importBtn.disabled = false;
+            importBtn.innerHTML = '📤 Import Data';
+        }
     },
 
     refresh() {

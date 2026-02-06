@@ -304,6 +304,32 @@ const DB = {
         });
     },
 
+    async clear(storeName) {
+        if (!this.instance) {
+            await this.init();
+        }
+        return new Promise((resolve, reject) => {
+            const transaction = this.instance.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.clear();
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async put(storeName, data) {
+        if (!this.instance) {
+            await this.init();
+        }
+        return new Promise((resolve, reject) => {
+            const transaction = this.instance.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(data);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
     async query(storeName, indexName, value) {
         if (!this.instance) {
             await this.init();
