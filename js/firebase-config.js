@@ -16,7 +16,7 @@ const FirebaseConfig = {
 // Flag to track initialization status
 window.FirebaseInitialized = false;
 window.FirebaseAuth = null;
-window.FirebaseDB = null;
+window.FirebaseDB = null; // Firestore instance
 
 /**
  * Initialize Firebase with retry mechanism
@@ -33,10 +33,20 @@ function initializeFirebase(retries = 5, delay = 500) {
             return;
         } else {
             console.error('❌ Firebase SDK failed to load after multiple attempts. Running in offline mode.');
+            console.error('💡 Possible causes: Network issue, CSP blocking, or script load failure');
             window.FirebaseInitialized = false;
             updateFirebaseStatus('offline');
             return;
         }
+    }
+
+    // Check if required Firebase services are available
+    if (!window.firebase.firestore || !window.firebase.auth) {
+        console.error('❌ Firebase services (firestore/auth) not available');
+        console.error('Available services:', Object.keys(window.firebase));
+        window.FirebaseInitialized = false;
+        updateFirebaseStatus('offline');
+        return;
     }
 
     // Initialize Firebase App
@@ -57,11 +67,15 @@ function initializeFirebase(retries = 5, delay = 500) {
     // Initialize Firebase services
     try {
         window.FirebaseAuth = window.firebase.auth();
-        window.FirebaseDB = window.firebase.database();
+        window.FirebaseDB = window.firebase.firestore();
 
         window.FirebaseInitialized = true;
         console.log('✅ Firebase services ready');
-        console.log('✅ Realtime Database connected');
+        console.log('✅ Firestore connected');
+        console.log('📊 Firebase config:', {
+            projectId: FirebaseConfig.projectId,
+            authDomain: FirebaseConfig.authDomain
+        });
         
         // Update visual status indicator
         updateFirebaseStatus('online');
