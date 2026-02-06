@@ -67,12 +67,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         return;
     }
     
-    // If short company ID provided (8 chars), expand to full ID
-    // Short ID: 5ti4r7Rz -> Full ID: 5ti4r7RzNhSLJQ5Wmx0rwQ5qhJn2
-    if (companyId.length === 8 && companyId === '5ti4r7Rz') {
-        companyId = '5ti4r7RzNhSLJQ5Wmx0rwQ5qhJn2';
-        console.log('✅ Short company ID detected, using full ID');
-    }
+    // Expand short company ID to full ID using mapping
+    companyId = expandCompanyId(companyId);
     
     // Show loading state
     loginBtn.disabled = true;

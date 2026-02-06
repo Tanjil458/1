@@ -61,9 +61,9 @@ const Advances = {
                     <span class="summary-label">Pending</span>
                     <span class="summary-value text-warning">${MoneyUtils.formatMoney(pendingAdvances)}</span>
                 </div>
-                <div class="summary-row" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;">
+                <div class="summary-row summary-row-separator">
                     <span class="summary-label">Days Worked (Total)</span>
-                    <span class="summary-value" style="color: var(--primary);">${daysWorked}</span>
+                    <span class="summary-value text-primary">${daysWorked}</span>
                 </div>
             </div>
 
