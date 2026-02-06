@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Data Migration Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status.warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .log-entry {
+            margin: 4px 0;
+        }
+        .log-success { color: #4caf50; }
+        .log-error { color: #f44336; }
+        .log-warning { color: #ff9800; }
+        .log-info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Attendance Data Migration Tool</h1>
+        <p>This tool will check and fix any attendance records that have numeric employeeId values, converting them to strings for consistency.</p>
+        
+        <div class="status info" id="authStatus">
+            ⏳ Checking authentication status...
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button id="checkBtn" disabled>1. Check Data</button>
+            <button id="migrateBtn" disabled>2. Migrate Data</button>
+            <button id="verifyBtn" disabled>3. Verify Fix</button>
+        </div>
+
+        <div class="status info" style="display: none;" id="statsBox">
+            <strong>Statistics:</strong>
+            <div id="stats"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 Console Log</h3>
+        <div id="log"></div>
+    </div>
+
+    <!-- Include Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Main Script -->
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwlN548N9A0uRKiRGdvxmoASFCfJtvmo0",
+            authDomain: "mimipro-0458.firebaseapp.com",
+            projectId: "mimipro-0458",
+            storageBucket: "mimipro-0458.firebasestorage.app",
+            messagingSenderId: "414929851648",
+            appId: "1:414929851648:web:535b52279d5e894bfd8fe5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Logging
+        const logDiv = document.getElementById('log');
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        // State
+        let currentUser = null;
+        let recordsToMigrate = [];
+
+        // Auth state listener
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            const authStatus = document.getElementById('authStatus');
+            const checkBtn = document.getElementById('checkBtn');
+            
+            if (user) {
+                authStatus.className = 'status success';
+                authStatus.textContent = `✅ Signed in as ${user.email}`;
+                checkBtn.disabled = false;
+                log('User authenticated: ' + user.email, 'success');
+            } else {
+                authStatus.className = 'status warning';
+                authStatus.textContent = '⚠️ Not signed in. Please sign in to admin app first.';
+                checkBtn.disabled = true;
+                log('No user authenticated', 'warning');
+            }
+        });
+
+        // Check Data
+        document.getElementById('checkBtn').addEventListener('click', async () => {
+            if (!currentUser) {
+                log('Please sign in to admin app first', 'error');
+                return;
+            }
+
+            log('Starting data check...', 'info');
+            const companyId = currentUser.uid;
+            
+            try {
+                const snapshot = await db.collection('users')
+                    .doc(companyId)
+                    .collection('attendance')
+                    .get();
+                
+                log(`Found ${snapshot.size} total attendance records`, 'info');
+                
+                recordsToMigrate = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (typeof data.employeeId === 'number') {
+                        recordsToMigrate.push({
+                            id: doc.id,
+                            data: data,
+                            oldValue: data.employeeId,
+                            newValue: String(data.employeeId)
+                        });
+                    }
+                });
+
+                const statsBox = document.getElementById('statsBox');
+                const stats = document.getElementById('stats');
+                statsBox.style.display = 'block';
+                
+                if (recordsToMigrate.length > 0) {
+                    log(`⚠️ Found ${recordsToMigrate.length} records with numeric employeeId`, 'warning');
+                    stats.innerHTML = `
+                        <div>Total records: ${snapshot.size}</div>
+                        <div>Records needing migration: <strong>${recordsToMigrate.length}</strong></div>
+                        <div>Records already correct: ${snapshot.size - recordsToMigrate.length}</div>
+                    `;
+                    document.getElementById('migrateBtn').disabled = false;
+                    
+                    // Show sample
+                    if (recordsToMigrate.length > 0) {
+                        log(`Sample record to migrate:`, 'info');
+                        log(`  ID: ${recordsToMigrate[0].id}`, 'info');
+                        log(`  Old: employeeId = ${recordsToMigrate[0].oldValue} (${typeof recordsToMigrate[0].oldValue})`, 'warning');
+                        log(`  New: employeeId = "${recordsToMigrate[0].newValue}" (string)`, 'success');
+                    }
+                } else {
+                    log('✅ All records already have string employeeId - no migration needed!', 'success');
+                    stats.innerHTML = `
+                        <div>Total records: ${snapshot.size}</div>
+                        <div>All records are correct! ✅</div>
+                    `;
+                    document.getElementById('verifyBtn').disabled = false;
+                }
+                
+            } catch (error) {
+                log('Error checking data: ' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        // Migrate Data
+        document.getElementById('migrateBtn').addEventListener('click', async () => {
+            if (recordsToMigrate.length === 0) {
+                log('No records to migrate', 'info');
+                return;
+            }
+
+            const confirmed = confirm(`This will update ${recordsToMigrate.length} attendance records. Continue?`);
+            if (!confirmed) {
+                log('Migration cancelled', 'warning');
+                return;
+            }
+
+            log(`Starting migration of ${recordsToMigrate.length} records...`, 'info');
+            const companyId = currentUser.uid;
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const record of recordsToMigrate) {
+                try {
+                    await db.collection('users')
+                        .doc(companyId)
+                        .collection('attendance')
+                        .doc(record.id)
+                        .update({
+                            employeeId: record.newValue
+                        });
+                    
+                    successCount++;
+                    log(`✅ Migrated record ${record.id}: ${record.oldValue} → "${record.newValue}"`, 'success');
+                } catch (error) {
+                    errorCount++;
+                    log(`❌ Failed to migrate record ${record.id}: ${error.message}`, 'error');
+                }
+            }
+
+            log(`\n=== Migration Complete ===`, 'info');
+            log(`Success: ${successCount}`, 'success');
+            log(`Errors: ${errorCount}`, errorCount > 0 ? 'error' : 'info');
+            
+            if (successCount > 0) {
+                document.getElementById('verifyBtn').disabled = false;
+                document.getElementById('migrateBtn').disabled = true;
+            }
+        });
+
+        // Verify Fix
+        document.getElementById('verifyBtn').addEventListener('click', async () => {
+            log('Verifying migration...', 'info');
+            const companyId = currentUser.uid;
+            
+            try {
+                const snapshot = await db.collection('users')
+                    .doc(companyId)
+                    .collection('attendance')
+                    .get();
+                
+                let numericCount = 0;
+                let stringCount = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (typeof data.employeeId === 'number') {
+                        numericCount++;
+                    } else if (typeof data.employeeId === 'string') {
+                        stringCount++;
+                    }
+                });
+
+                log(`\n=== Verification Results ===`, 'info');
+                log(`Total records: ${snapshot.size}`, 'info');
+                log(`String employeeId: ${stringCount}`, 'success');
+                log(`Numeric employeeId: ${numericCount}`, numericCount > 0 ? 'warning' : 'success');
+                
+                if (numericCount === 0) {
+                    log(`\n✅ PERFECT! All records now have string employeeId`, 'success');
+                    log(`The employee app should now work correctly.`, 'success');
+                } else {
+                    log(`\n⚠️ Still found ${numericCount} records with numeric employeeId`, 'warning');
+                    log(`Try running Check Data and Migrate Data again.`, 'warning');
+                }
+                
+            } catch (error) {
+                log('Error verifying: ' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        // Initial log
+        log('Migration tool loaded. Sign in to admin app to continue.', 'info');
+    </script>
+</body>
+</html>
