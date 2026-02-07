@@ -7,6 +7,17 @@
  * - On manual "Sync Now" button click
  * - Owner device only
  * 
+ * Firestore Structure:
+ * /users/{ownerId}/  (ownerId = admin's Firebase Auth UID)
+ *   /employees/{employeeId}
+ *   /attendance/{attendanceId}
+ *   /advances/{advanceId}
+ *   /delivery/{deliveryId}
+ *   ... etc
+ * 
+ * Note: "users" collection is used for compatibility with existing data.
+ * Each user document represents an owner/company.
+ * 
  * Key Features:
  * - Bidirectional sync (upload changed, download newer)
  * - Conflict resolution (cloud newer wins)
@@ -393,7 +404,7 @@ const SyncModule = {
             // Determine collection path based on store type
             const collectionPath = this.getCollectionPath(ownerId, storeName);
             
-            const docRef = FirebaseDB.collection('owners')
+            const docRef = FirebaseDB.collection('users')
                 .doc(ownerId)
                 .collection(collectionPath)
                 .doc(String(data.id));
@@ -427,7 +438,7 @@ const SyncModule = {
         try {
             const collectionPath = this.getCollectionPath(ownerId, storeName);
             
-            const docRef = FirebaseDB.collection('owners')
+            const docRef = FirebaseDB.collection('users')
                 .doc(ownerId)
                 .collection(collectionPath)
                 .doc(String(id));
@@ -457,7 +468,7 @@ const SyncModule = {
         try {
             const collectionPath = this.getCollectionPath(ownerId, storeName);
             
-            const snapshot = await FirebaseDB.collection('owners')
+            const snapshot = await FirebaseDB.collection('users')
                 .doc(ownerId)
                 .collection(collectionPath)
                 .get();

@@ -90,7 +90,7 @@ const EmployeeSyncService = {
             console.log('📥 Syncing employee profile...');
             
             // Query Firestore for this employee's profile
-            const snapshot = await firestoreDB.collection('owners')
+            const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('employees')
                 .where('id', '==', String(employeeId))
@@ -134,7 +134,7 @@ const EmployeeSyncService = {
             });
             
             // Query Firestore for this employee's attendance
-            const snapshot = await firestoreDB.collection('owners')
+            const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('attendance')
                 .where('employeeId', '==', String(employeeId))
@@ -174,7 +174,7 @@ const EmployeeSyncService = {
             console.log('📥 Syncing deliveries...');
             
             // Query Firestore for this employee's deliveries
-            const snapshot = await firestoreDB.collection('owners')
+            const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('delivery')
                 .where('employeeId', '==', String(employeeId))
@@ -214,7 +214,7 @@ const EmployeeSyncService = {
             console.log('📥 Syncing advances...');
             
             // Query Firestore for this employee's advances
-            const snapshot = await firestoreDB.collection('owners')
+            const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('advances')
                 .where('employeeId', '==', String(employeeId))
