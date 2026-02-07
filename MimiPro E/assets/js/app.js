@@ -36,7 +36,7 @@ const App = {
             // Give IndexedDB time to fully initialize
             await new Promise(r => setTimeout(r, 500));
             console.log('🔄 Starting auto-sync...');
-            SyncManager.syncAll();
+            EmployeeSyncService.syncNow();
         }, 1500);
     },
 
@@ -94,7 +94,7 @@ const App = {
         const syncBtn = document.getElementById('syncBtn');
         if (syncBtn) {
             syncBtn.addEventListener('click', () => {
-                SyncManager.syncAll();
+                EmployeeSyncService.syncNow();
             });
         }
     },

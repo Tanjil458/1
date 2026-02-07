@@ -1,15 +1,25 @@
 /**
- * Cloud Sync Module - Firebase Integration
- * Handles synchronization between local IndexedDB and Firebase Firestore
+ * Cloud Sync Module - Backup & Restore Model
+ * 
+ * This implements a backup+restore sync model (NOT real-time)
+ * Sync happens:
+ * - On app launch
+ * - On manual "Sync Now" button click
+ * - Owner device only
+ * 
+ * Key Features:
+ * - Bidirectional sync (upload changed, download newer)
+ * - Conflict resolution (cloud newer wins)
+ * - Soft deletes (deleted: true flag)
+ * - No real-time listeners
+ * - Source of truth: Firestore = backup, IndexedDB = primary
  */
 
 const SyncModule = {
     currentUser: null,
     syncEnabled: false,
-    lastSyncTime: {},
-    autoSyncInterval: null,
-    realtimeListeners: {},
-    syncStatusCheckInterval: null,
+    isSyncing: false,
+    lastSyncTime: null,
 
     /**
      * Initialize sync module and listen to auth state changes
@@ -28,17 +38,8 @@ const SyncModule = {
                 console.log('✅ User logged in:', user.email);
                 this.syncEnabled = true;
                 
-                // Pull data from cloud when user logs in
-                await this.pullFromCloud();
-                
-                // Start auto-sync
-                this.startAutoSync();
-                
-                // Setup real-time listeners for all stores
-                this.setupAllRealtimeSync();
-                
-                // Start checking sync status
-                this.startSyncStatusCheck();
+                // Pull data from cloud when user logs in (app launch sync)
+                await this.syncNow();
                 
                 if (window.App) {
                     App.showToast(`Signed in as ${user.email}`, 'success');
@@ -46,15 +47,6 @@ const SyncModule = {
             } else {
                 console.log('❌ User logged out');
                 this.syncEnabled = false;
-                
-                // Stop auto-sync
-                this.stopAutoSync();
-                
-                // Remove all real-time listeners
-                this.removeAllRealtimeListeners();
-                
-                // Stop sync status check
-                this.stopSyncStatusCheck();
                 
                 // Reset sync indicator
                 this.updateSyncIndicator('disabled');
@@ -77,7 +69,7 @@ const SyncModule = {
 
             for (const storeName of stores) {
                 try {
-                    const allData = await DB.getAll(storeName);
+                    const allData = await DB.getAll(storeName, true); // Include deleted
                     const unsynced = allData.filter(item => !item.synced);
                     unsyncedCount += unsynced.length;
                 } catch (error) {
@@ -134,29 +126,6 @@ const SyncModule = {
                 syncBtn.classList.add('sync-disabled');
                 syncBtn.title = 'Sign in to sync';
                 break;
-        }
-    },
-
-    /**
-     * Start periodic sync status check
-     */
-    startSyncStatusCheck() {
-        // Initial check
-        this.checkSyncStatus();
-        
-        // Check every 10 seconds
-        this.syncStatusCheckInterval = setInterval(() => {
-            this.checkSyncStatus();
-        }, 10000);
-    },
-
-    /**
-     * Stop sync status check
-     */
-    stopSyncStatusCheck() {
-        if (this.syncStatusCheckInterval) {
-            clearInterval(this.syncStatusCheckInterval);
-            this.syncStatusCheckInterval = null;
         }
     },
 
@@ -245,200 +214,58 @@ const SyncModule = {
     },
 
     /**
-     * Push single item to cloud
+     * Main sync function - called manually
+     * Implements backup + restore model
      */
-    async pushToCloud(storeName, data) {
+    async syncNow() {
         if (!this.syncEnabled || !this.currentUser) {
-            console.warn('⚠️ Sync disabled or user not logged in');
+            if (window.App) {
+                App.showToast('Please sign in to sync', 'warning');
+            }
             return;
         }
 
-        try {
-            const userId = this.currentUser.uid;
-            // Use full userId as companyId (this is what employees use to login)
-            const companyId = userId;
-            
-            // Shared stores that employees need to access (use companyId path)
-            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
-            
-            let docRef;
-            if (sharedStores.includes(storeName)) {
-                // Write to companyId path so employees can read it
-                docRef = FirebaseDB.collection('users')
-                    .doc(companyId)
-                    .collection(storeName)
-                    .doc(String(data.id));
-                console.log(`🔗 Writing ${storeName} to shared path: users/${companyId}/${storeName}`);
-            } else {
-                // Write private admin data using full userId
-                docRef = FirebaseDB.collection('users')
-                    .doc(userId)
-                    .collection(storeName)
-                    .doc(String(data.id));
-            }
-
-            await docRef.set({
-                ...data,
-                syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                userId: userId,
-                companyId: companyId
-            }, { merge: true });
-
-            console.log(`✅ Pushed ${storeName}/${data.id} to cloud`);
-            
-            // Extra logging for attendance and advances to help debug
-            if (storeName === 'attendance') {
-                console.log(`📊 Attendance Details:`, {
-                    id: data.id,
-                    employeeId: data.employeeId,
-                    employeeIdType: typeof data.employeeId,
-                    date: data.date,
-                    path: `users/${companyId}/attendance/${data.id}`
-                });
-            }
-            
-            if (storeName === 'advances') {
-                console.log(`💰 Advance Details:`, {
-                    id: data.id,
-                    employeeId: data.employeeId,
-                    employeeIdType: typeof data.employeeId,
-                    amount: data.amount,
-                    date: data.date,
-                    reason: data.reason || data.note,
-                    status: data.status,
-                    path: `users/${companyId}/advances/${data.id}`
-                });
-            }
-        } catch (error) {
-            console.error(`❌ Failed to push ${storeName}/${data.id}:`, error);
-            
-            // Log specific error details
-            if (error.code === 'permission-denied') {
-                console.error('🔥 FIRESTORE PERMISSION DENIED!');
-                console.error('📝 Fix: Go to Firebase Console → Firestore Database → Rules');
-                console.error('📝 Replace rules with:');
-                console.error(`
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-                `);
-            }
-            
-            throw error;
-        }
-    },
-
-    /**
-     * Delete item from cloud
-     */
-    async deleteFromCloud(storeName, id) {
-        if (!this.syncEnabled || !this.currentUser) {
+        if (this.isSyncing) {
+            console.log('⚠️ Sync already in progress');
             return;
         }
 
-        try {
-            const userId = this.currentUser.uid;
-            const companyId = userId;
-            
-            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
-            
-            let docRef;
-            if (sharedStores.includes(storeName)) {
-                docRef = FirebaseDB.collection('users')
-                    .doc(companyId)
-                    .collection(storeName)
-                    .doc(String(id));
-            } else {
-                docRef = FirebaseDB.collection('users')
-                    .doc(userId)
-                    .collection(storeName)
-                    .doc(String(id));
-            }
-
-            await docRef.delete();
-            console.log(`✅ Deleted ${storeName}/${id} from cloud`);
-        } catch (error) {
-            console.error(`❌ Failed to delete ${storeName}/${id}:`, error);
-        }
-    },
-
-    /**
-     * Pull all data from cloud and merge with local
-     */
-    async pullFromCloud() {
-        if (!this.currentUser) {
-            console.warn('⚠️ No user logged in, cannot pull from cloud');
-            return;
-        }
+        this.isSyncing = true;
+        this.updateSyncIndicator('syncing');
 
         try {
-            const userId = this.currentUser.uid;
-            const companyId = userId;
-            const stores = Object.values(DB.stores);
-            const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
-            let totalSynced = 0;
-
-            for (const storeName of stores) {
-                try {
-                    let snapshot;
-                    
-                    if (sharedStores.includes(storeName)) {
-                        // Read from companyId path
-                        snapshot = await FirebaseDB.collection('users')
-                            .doc(companyId)
-                            .collection(storeName)
-                            .get();
-                        console.log(`📖 Reading ${storeName} from shared path: users/${companyId}/${storeName}`);
-                    } else {
-                        // Read from private userId path
-                        snapshot = await FirebaseDB.collection('users')
-                            .doc(userId)
-                            .collection(storeName)
-                            .get();
-                    }
-
-                    for (const doc of snapshot.docs) {
-                        const cloudData = doc.data();
-                        
-                        // Remove Firebase-specific fields before saving to IndexedDB
-                        const { syncedAt, userId: uid, companyId: cid, ...cleanData } = cloudData;
-                        
-                        // Get local data
-                        const localData = await DB.getById(storeName, cleanData.id);
-
-                        // If local doesn't exist or cloud is newer, update local
-                        if (!localData || this.isCloudNewer(cloudData, localData)) {
-                            await DB.update(storeName, { ...cleanData, synced: true });
-                            totalSynced++;
-                        }
-                    }
-
-                    console.log(`✅ Pulled ${storeName}: ${snapshot.size} items`);
-                } catch (storeError) {
-                    console.error(`❌ Failed to pull ${storeName}:`, storeError);
-                    // Continue with other stores even if one fails
-                }
+            console.log('🔄 Starting backup & restore sync...');
+            
+            if (window.App) {
+                App.showToast('Syncing data...', 'info');
             }
 
-            if (window.App && totalSynced > 0) {
-                App.showToast(`Synced ${totalSynced} items from cloud`, 'success');
-            } else if (window.App && totalSynced === 0) {
-                App.showToast('Cloud sync complete - no new data', 'info');
+            const ownerId = this.currentUser.uid;
+            
+            // Step 1: Upload local changes to cloud (backup)
+            await this.uploadLocalChanges(ownerId);
+            
+            // Step 2: Download cloud data and merge (restore)
+            await this.downloadAndMerge(ownerId);
+            
+            this.lastSyncTime = new Date();
+            localStorage.setItem('lastSyncTime', this.lastSyncTime.toISOString());
+            
+            console.log('✅ Sync completed successfully');
+            
+            if (window.App) {
+                App.showToast('Sync complete!', 'success');
             }
             
-            console.log(`✅ Total items synced: ${totalSynced}`);
+            // Update sync status after completion
+            await this.checkSyncStatus();
+            
         } catch (error) {
-            console.error('❌ Failed to pull from cloud:', error);
+            console.error('❌ Sync failed:', error);
             console.error('Error details:', error.code, error.message);
             
             let errorMessage = 'Sync failed';
             
-            // Provide specific error messages
             if (error.code === 'permission-denied') {
                 errorMessage = 'Permission denied - Check Firestore rules';
                 console.error('🔥 Firestore Rules Error: Make sure you have set the security rules in Firebase Console');
@@ -452,8 +279,239 @@ service cloud.firestore {
                 App.showToast(errorMessage, 'error');
             }
             
+            this.updateSyncIndicator('error');
+            
+        } finally {
+            this.isSyncing = false;
+        }
+    },
+
+    /**
+     * Upload local changes to Firestore (Backup)
+     * Only uploads records where local.updatedAt > cloud.updatedAt
+     */
+    async uploadLocalChanges(ownerId) {
+        console.log('⬆️ Uploading local changes...');
+        
+        const stores = Object.values(DB.stores);
+        let uploadCount = 0;
+        let errors = [];
+
+        for (const storeName of stores) {
+            try {
+                // Get all unsynced items (including deleted ones)
+                const allData = await DB.getAll(storeName, true);
+                const unsyncedData = allData.filter(item => !item.synced);
+
+                for (const localItem of unsyncedData) {
+                    try {
+                        // Check if cloud has newer version
+                        const cloudItem = await this.getFromCloud(ownerId, storeName, localItem.id);
+                        
+                        // Upload if: 
+                        // 1. Item doesn't exist in cloud, OR
+                        // 2. Local is newer than cloud
+                        if (!cloudItem || this.isLocalNewer(localItem, cloudItem)) {
+                            await this.pushToCloud(ownerId, storeName, localItem);
+                            
+                            // Mark as synced in local DB
+                            await DB.update(storeName, { ...localItem, synced: true });
+                            uploadCount++;
+                            
+                            console.log(`✅ Uploaded ${storeName}/${localItem.id}`);
+                        } else {
+                            console.log(`⏭️ Skipped ${storeName}/${localItem.id} - cloud is newer`);
+                        }
+                    } catch (itemError) {
+                        console.error(`❌ Failed to upload ${storeName}/${localItem.id}:`, itemError);
+                        errors.push({
+                            store: storeName,
+                            id: localItem.id,
+                            error: itemError.message || 'Unknown error'
+                        });
+                    }
+                }
+            } catch (storeError) {
+                console.error(`❌ Failed to process ${storeName}:`, storeError);
+            }
+        }
+
+        console.log(`⬆️ Upload complete: ${uploadCount} items uploaded`);
+        
+        if (errors.length > 0) {
+            console.error('⚠️ Upload errors:', errors);
+        }
+    },
+
+    /**
+     * Download data from Firestore and merge with local (Restore)
+     */
+    async downloadAndMerge(ownerId) {
+        console.log('⬇️ Downloading from cloud...');
+        
+        const stores = Object.values(DB.stores);
+        let downloadCount = 0;
+
+        for (const storeName of stores) {
+            try {
+                // Download all items from this collection
+                const cloudItems = await this.getAllFromCloud(ownerId, storeName);
+                
+                for (const cloudItem of cloudItems) {
+                    try {
+                        const localItem = await DB.getById(storeName, cloudItem.id);
+                        
+                        // Download if:
+                        // 1. Item doesn't exist locally, OR
+                        // 2. Cloud is newer than local
+                        if (!localItem || this.isCloudNewer(cloudItem, localItem)) {
+                            // Merge with synced flag
+                            await DB.update(storeName, { ...cloudItem, synced: true });
+                            downloadCount++;
+                            console.log(`✅ Downloaded ${storeName}/${cloudItem.id}`);
+                        }
+                    } catch (itemError) {
+                        console.error(`❌ Failed to merge ${storeName}/${cloudItem.id}:`, itemError);
+                    }
+                }
+                
+                console.log(`⬇️ Downloaded ${cloudItems.length} items from ${storeName}`);
+                
+            } catch (storeError) {
+                console.error(`❌ Failed to download ${storeName}:`, storeError);
+            }
+        }
+
+        console.log(`⬇️ Download complete: ${downloadCount} items merged`);
+    },
+
+    /**
+     * Push single item to cloud
+     */
+    async pushToCloud(ownerId, storeName, data) {
+        try {
+            // Determine collection path based on store type
+            const collectionPath = this.getCollectionPath(ownerId, storeName);
+            
+            const docRef = FirebaseDB.collection('owners')
+                .doc(ownerId)
+                .collection(collectionPath)
+                .doc(String(data.id));
+
+            // Prepare data for Firestore
+            const firestoreData = {
+                ...data,
+                ownerId: ownerId,
+                employeeId: data.employeeId ? String(data.employeeId) : null,
+                updatedAt: data.updatedAt || new Date().toISOString(),
+                createdAt: data.createdAt || new Date().toISOString(),
+                deleted: data.deleted || false,
+                syncVersion: data.syncVersion || 1,
+                syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await docRef.set(firestoreData, { merge: true });
+            
+            console.log(`✅ Pushed ${storeName}/${data.id} to cloud`);
+            
+        } catch (error) {
+            console.error(`❌ Failed to push ${storeName}/${data.id}:`, error);
             throw error;
         }
+    },
+
+    /**
+     * Get single item from cloud
+     */
+    async getFromCloud(ownerId, storeName, id) {
+        try {
+            const collectionPath = this.getCollectionPath(ownerId, storeName);
+            
+            const docRef = FirebaseDB.collection('owners')
+                .doc(ownerId)
+                .collection(collectionPath)
+                .doc(String(id));
+
+            const doc = await docRef.get();
+            
+            if (!doc.exists) {
+                return null;
+            }
+            
+            const data = doc.data();
+            // Remove Firestore-specific fields
+            const { syncedAt, ...cleanData } = data;
+            
+            return cleanData;
+            
+        } catch (error) {
+            console.error(`❌ Failed to get ${storeName}/${id} from cloud:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all items from a cloud collection
+     */
+    async getAllFromCloud(ownerId, storeName) {
+        try {
+            const collectionPath = this.getCollectionPath(ownerId, storeName);
+            
+            const snapshot = await FirebaseDB.collection('owners')
+                .doc(ownerId)
+                .collection(collectionPath)
+                .get();
+            
+            const items = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const { syncedAt, ...cleanData } = data;
+                items.push(cleanData);
+            });
+            
+            return items;
+            
+        } catch (error) {
+            console.error(`❌ Failed to get all from ${storeName}:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get collection path for a store
+     * Maps local store names to Firestore collection names
+     */
+    getCollectionPath(ownerId, storeName) {
+        // Map store names to Firestore collections
+        const collectionMap = {
+            'employees': 'employees',
+            'attendance': 'attendance',
+            'advances': 'advances',
+            'productAdvances': 'productAdvances',
+            'repayments': 'repayments',
+            'salaryReports': 'salaryReports',
+            'deliveries': 'delivery',
+            'delivery': 'delivery',
+            'stock': 'stock',
+            'credits': 'credits',
+            'creditPayments': 'creditPayments',
+            'products': 'products',
+            'customers': 'customers',
+            'history': 'history',
+            'expenses': 'expenses',
+            'areas': 'areas'
+        };
+        
+        return collectionMap[storeName] || storeName;
+    },
+
+    /**
+     * Check if local data is newer than cloud data
+     */
+    isLocalNewer(localData, cloudData) {
+        const localTime = localData.updatedAt || localData.createdAt || '';
+        const cloudTime = cloudData.updatedAt || cloudData.createdAt || '';
+        return localTime > cloudTime;
     },
 
     /**
@@ -466,259 +524,31 @@ service cloud.firestore {
     },
 
     /**
-     * Start automatic sync every 5 minutes
+     * Get last sync time formatted
      */
-    startAutoSync() {
-        if (this.autoSyncInterval) {
-            return; // Already running
-        }
-
-        // Sync every 5 minutes
-        this.autoSyncInterval = setInterval(() => {
-            this.syncUnsyncedData();
-        }, 5 * 60 * 1000);
-
-        console.log('🔄 Auto-sync started (every 5 minutes)');
-    },
-
-    /**
-     * Stop automatic sync
-     */
-    stopAutoSync() {
-        if (this.autoSyncInterval) {
-            clearInterval(this.autoSyncInterval);
-            this.autoSyncInterval = null;
-            console.log('⏸️ Auto-sync stopped');
-        }
-    },
-
-    /**
-     * Sync all unsynced data to cloud
-     */
-    async syncUnsyncedData() {
-        if (!this.syncEnabled || !this.currentUser) {
-            return;
-        }
-
-        try {
-            const stores = Object.values(DB.stores);
-            let totalSynced = 0;
-
-            for (const storeName of stores) {
-                try {
-                    const allData = await DB.getAll(storeName);
-                    const unsyncedData = allData.filter(item => !item.synced);
-
-                    for (const data of unsyncedData) {
-                        await this.pushToCloud(storeName, data);
-                        // Mark as synced in local DB
-                        await DB.update(storeName, { ...data, synced: true });
-                        totalSynced++;
-                    }
-
-                    if (unsyncedData.length > 0) {
-                        console.log(`✅ Synced ${unsyncedData.length} items from ${storeName}`);
-                    }
-                } catch (storeError) {
-                    console.error(`❌ Failed to sync ${storeName}:`, storeError);
-                }
+    getLastSyncTime() {
+        if (!this.lastSyncTime) {
+            const stored = localStorage.getItem('lastSyncTime');
+            if (stored) {
+                this.lastSyncTime = new Date(stored);
             }
-
-            if (totalSynced > 0) {
-                console.log(`✅ Auto-sync completed: ${totalSynced} items`);
-            }
-            
-            // Update sync status indicator
-            this.checkSyncStatus();
-        } catch (error) {
-            console.error('❌ Auto-sync failed:', error);
         }
-    },
-
-    /**
-     * Setup real-time sync for a specific store
-     */
-    setupRealtimeSync(storeName) {
-        if (!this.currentUser) {
-            return null;
-        }
-
-        const userId = this.currentUser.uid;
-        const companyId = userId;
-        const sharedStores = ['attendance', 'employees', 'delivery', 'credits', 'advances', 'stock'];
         
-        // Unsubscribe existing listener if any
-        if (this.realtimeListeners[storeName]) {
-            this.realtimeListeners[storeName]();
+        if (!this.lastSyncTime) {
+            return 'Never';
         }
-
-        // Setup new listener
-        let collectionRef;
-        if (sharedStores.includes(storeName)) {
-            collectionRef = FirebaseDB.collection('users')
-                .doc(companyId)
-                .collection(storeName);
-        } else {
-            collectionRef = FirebaseDB.collection('users')
-                .doc(userId)
-                .collection(storeName);
-        }
-
-        const unsubscribe = collectionRef.onSnapshot((snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    const data = change.doc.data();
-                    const { syncedAt, userId: uid, companyId: cid, ...cleanData } = data;
-
-                    if (change.type === 'added' || change.type === 'modified') {
-                        // Check if this change came from another device
-                        const localData = await DB.getById(storeName, cleanData.id);
-                        
-                        if (!localData || this.isCloudNewer(data, localData)) {
-                            await DB.update(storeName, { ...cleanData, synced: true });
-                            console.log(`🔄 Real-time update: ${storeName}/${cleanData.id}`);
-                            
-                            // Refresh current module if needed
-                            if (window.App && window.App.currentModule) {
-                                const currentModuleName = window.App.currentModule;
-                                const module = window.App.modules[currentModuleName];
-                                
-                                if (module && typeof module.refresh === 'function') {
-                                    module.refresh();
-                                }
-                            }
-                        }
-                    } else if (change.type === 'removed') {
-                        await DB.delete(storeName, cleanData.id);
-                        console.log(`🔄 Real-time delete: ${storeName}/${cleanData.id}`);
-                    }
-                });
-            }, (error) => {
-                console.error(`❌ Real-time sync error for ${storeName}:`, error);
-            });
-
-        this.realtimeListeners[storeName] = unsubscribe;
-        console.log(`👂 Listening for real-time updates: ${storeName}`);
         
-        return unsubscribe;
-    },
-
-    /**
-     * Setup real-time sync for all stores
-     */
-    setupAllRealtimeSync() {
-        const stores = Object.values(DB.stores);
-        stores.forEach(storeName => {
-            this.setupRealtimeSync(storeName);
-        });
-    },
-
-    /**
-     * Remove all real-time listeners
-     */
-    removeAllRealtimeListeners() {
-        Object.values(this.realtimeListeners).forEach(unsubscribe => {
-            if (typeof unsubscribe === 'function') {
-                unsubscribe();
-            }
-        });
-        this.realtimeListeners = {};
-        console.log('👂 All real-time listeners removed');
-    },
-
-    /**
-     * Force full sync (push all local data to cloud)
-     */
-    async forceFullSync() {
-        if (!this.syncEnabled || !this.currentUser) {
-            if (window.App) {
-                App.showToast('Please sign in to sync', 'warning');
-            }
-            return;
-        }
-
-        try {
-            if (window.App) {
-                App.showToast('Syncing data...', 'info');
-            }
-
-            const stores = Object.values(DB.stores);
-            let totalPushed = 0;
-            let errors = [];
-
-            for (const storeName of stores) {
-                try {
-                    const allData = await DB.getAll(storeName);
-                    
-                    // Only sync items that haven't been synced yet (more efficient)
-                    const unsyncedData = allData.filter(item => !item.synced);
-                    
-                    for (const data of unsyncedData) {
-                        try {
-                            await this.pushToCloud(storeName, data);
-                            await DB.update(storeName, { ...data, synced: true });
-                            totalPushed++;
-                        } catch (itemError) {
-                            console.error(`❌ Failed to sync ${storeName}/${data.id}:`, itemError);
-                            console.error('Failed item data:', JSON.stringify(data, null, 2));
-                            console.error('Error code:', itemError.code);
-                            console.error('Error message:', itemError.message);
-                            errors.push({ 
-                                store: storeName, 
-                                id: data.id, 
-                                error: itemError.message || itemError.code || 'Unknown error',
-                                data: data 
-                            });
-                        }
-                    }
-                } catch (storeError) {
-                    console.error(`❌ Failed to sync ${storeName}:`, storeError);
-                    errors.push(storeName);
-                }
-            }
-
-            // Also pull from cloud to ensure we have latest
-            await this.pullFromCloud();
-
-            if (window.App) {
-                if (errors.length > 0) {
-                    const errorDetails = errors.map(e => `${e.store}/${e.id}: ${e.error}`).join('\n');
-                    console.error('📋 SYNC ERROR DETAILS:\n' + errorDetails);
-                    App.showToast(`Partially synced: ${totalPushed} items (${errors.length} errors) - Check console for details`, 'warning');
-                } else if (totalPushed > 0) {
-                    App.showToast(`Sync complete! ${totalPushed} items uploaded`, 'success');
-                } else {
-                    App.showToast('Already synced - everything is up to date', 'success');
-                }
-            }
-            
-            console.log(`✅ Full sync completed: ${totalPushed} items pushed`);
-            if (errors.length > 0) {
-                console.error('⚠️ SYNC ERRORS SUMMARY:');
-                errors.forEach(err => {
-                    console.error(`  - ${err.store}/${err.id}: ${err.error}`);
-                });
-            }
-        } catch (error) {
-            console.error('❌ Force sync failed:', error);
-            console.error('Error details:', error.code, error.message);
-            
-            let errorMessage = 'Sync failed';
-            
-            if (error.code === 'permission-denied') {
-                errorMessage = 'Permission denied - Check Firestore rules in Firebase Console';
-            } else if (error.message && error.message.includes('Missing or insufficient permissions')) {
-                errorMessage = 'Permission denied - Firestore rules need to be updated';
-            } else if (error.message) {
-                errorMessage = `Sync error: ${error.message}`;
-            }
-            
-            if (window.App) {
-                App.showToast(errorMessage, 'error');
-            }
-        } finally {
-            // Update sync status after sync attempt
-            this.checkSyncStatus();
-        }
+        const now = new Date();
+        const diffMs = now - this.lastSyncTime;
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        
+        return this.lastSyncTime.toLocaleDateString();
     }
 };
 

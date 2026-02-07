@@ -197,7 +197,7 @@ const DB = {
     },
 
     // Generic CRUD operations
-    async getAll(storeName) {
+    async getAll(storeName, includeDeleted = false) {
         if (!this.instance) {
             await this.init();
         }
@@ -205,7 +205,12 @@ const DB = {
             const transaction = this.instance.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+                const results = request.result;
+                // Filter out deleted records unless explicitly requested
+                const filtered = includeDeleted ? results : results.filter(item => !item.deleted);
+                resolve(filtered);
+            };
             request.onerror = () => reject(request.error);
         });
     },
@@ -230,24 +235,20 @@ const DB = {
         return new Promise((resolve, reject) => {
             const transaction = this.instance.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
+            const now = new Date().toISOString();
             const request = store.add({
                 ...data,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                synced: false
+                createdAt: now,
+                updatedAt: now,
+                synced: false,
+                deleted: false,
+                syncVersion: 1
             });
             request.onsuccess = async () => {
                 const id = request.result;
                 
-                // Trigger cloud sync
-                if (window.SyncModule?.syncEnabled) {
-                    setTimeout(() => {
-                        window.SyncModule.pushToCloud(storeName, { ...data, id });
-                        // Update sync indicator
-                        window.SyncModule.checkSyncStatus();
-                    }, 100);
-                } else if (window.SyncModule) {
-                    // Update indicator even when not syncing
+                // Update sync indicator
+                if (window.SyncModule) {
                     setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
                 }
                 
@@ -267,18 +268,13 @@ const DB = {
             const request = store.put({
                 ...data,
                 updatedAt: new Date().toISOString(),
-                synced: false
+                synced: false,
+                deleted: data.deleted || false,
+                syncVersion: (data.syncVersion || 0) + 1
             });
             request.onsuccess = async () => {
-                // Trigger cloud sync
-                if (window.SyncModule?.syncEnabled) {
-                    setTimeout(() => {
-                        window.SyncModule.pushToCloud(storeName, data);
-                        // Update sync indicator
-                        window.SyncModule.checkSyncStatus();
-                    }, 100);
-                } else if (window.SyncModule) {
-                    // Update indicator even when not syncing
+                // Update sync indicator
+                if (window.SyncModule) {
                     setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
                 }
                 
@@ -292,26 +288,18 @@ const DB = {
         if (!this.instance) {
             await this.init();
         }
-        return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.delete(id);
-            request.onsuccess = async () => {
-                // Trigger cloud sync (delete from cloud)
-                if (window.SyncModule?.syncEnabled) {
-                    setTimeout(() => {
-                        window.SyncModule.deleteFromCloud(storeName, id);
-                        // Update sync indicator
-                        window.SyncModule.checkSyncStatus();
-                    }, 100);
-                } else if (window.SyncModule) {
-                    // Update indicator even when not syncing
-                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
-                }
-                
-                resolve();
-            };
-            request.onerror = () => reject(request.error);
+        // Implement soft delete - mark as deleted instead of hard delete
+        const existing = await this.getById(storeName, id);
+        if (!existing) {
+            return Promise.resolve();
+        }
+        
+        return this.update(storeName, {
+            ...existing,
+            deleted: true,
+            updatedAt: new Date().toISOString(),
+            synced: false,
+            syncVersion: (existing.syncVersion || 0) + 1
         });
     },
 
