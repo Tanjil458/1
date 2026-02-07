@@ -57,7 +57,7 @@ const Profile = {
                     </div>
                     <div class="info-row">
                         <span class="info-label">Last Synced</span>
-                        <span class="info-value">${SyncManager.getLastSyncTime()}</span>
+                        <span class="info-value">${EmployeeSyncService.getLastSyncTime()}</span>
                     </div>
                 </div>
             </div>

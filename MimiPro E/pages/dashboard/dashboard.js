@@ -69,8 +69,8 @@ const Dashboard = {
             </div>
 
             <div class="section">
-                <p class="text-muted text-center">Last synced: ${SyncManager.getLastSyncTime()}</p>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="SyncManager.syncAll()">🔄 Sync Now</button>
+                <p class="text-muted text-center">Last synced: ${EmployeeSyncService.getLastSyncTime()}</p>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="EmployeeSyncService.syncNow()">🔄 Sync Now</button>
             </div>
         `;
         } catch (error) {
