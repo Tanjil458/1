@@ -72,7 +72,7 @@ const Deliveries = {
                     <div class="empty-icon">⚠️</div>
                     <div class="empty-title">Error loading deliveries</div>
                     <div class="empty-text">${error.message}</div>
-                    <button class="btn btn-primary" onclick="EmployeeSyncService.syncNow()" style="margin-top: 20px;">🔄 Try Syncing</button>
+                    <button class="btn btn-primary" onclick="EmployeeSyncService.syncNow()">🔄 Try Syncing</button>
                 </div>
             `;
         }

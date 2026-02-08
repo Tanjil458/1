@@ -71,8 +71,10 @@ const App = {
             const deliveriesBtn = document.createElement('button');
             deliveriesBtn.className = 'nav-btn';
             deliveriesBtn.setAttribute('data-page', 'deliveries');
+            deliveriesBtn.setAttribute('aria-label', 'Deliveries');
             deliveriesBtn.innerHTML = `
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Deliveries icon">
+                    <title>Deliveries</title>
                     <path d="M1 3h15v13H1zM16 8h7v13H8z"></path>
                 </svg>
                 <span class="nav-label">Deliveries</span>
