@@ -46,18 +46,30 @@ const EmployeeSyncService = {
             await employeeDB.ensureDB();
 
             // Download and merge each data type
-            await this.syncEmployeeProfile(companyId, employeeId);
-            await this.syncAttendance(companyId, employeeId);
-            await this.syncDeliveries(companyId, employeeId);
-            await this.syncAdvances(companyId, employeeId);
+            const syncResults = {
+                profile: await this.syncEmployeeProfile(companyId, employeeId),
+                attendance: await this.syncAttendance(companyId, employeeId),
+                deliveries: await this.syncDeliveries(companyId, employeeId),
+                advances: await this.syncAdvances(companyId, employeeId)
+            };
 
             this.lastSyncTime = new Date();
             localStorage.setItem('lastSyncTime', this.lastSyncTime.toISOString());
 
+            // Calculate total synced items (including profile) - safeguard against undefined
+            const totalSynced = (syncResults.profile || 0) + (syncResults.attendance || 0) + (syncResults.deliveries || 0) + (syncResults.advances || 0);
+            
             console.log('✅ Employee sync completed successfully');
+            console.log('📊 Sync Summary:', syncResults);
             
             UIUtils.hideLoading();
-            UIUtils.showToast('Data synced successfully');
+            
+            // Show detailed sync message (profile not shown to keep message simple)
+            if (totalSynced === 0) {
+                UIUtils.showToast('⚠️ Sync complete - No new data found. Ask admin to sync data first.', 'warning');
+            } else {
+                UIUtils.showToast(`✅ Synced ${totalSynced} records (Attendance: ${syncResults.attendance}, Advances: ${syncResults.advances}, Deliveries: ${syncResults.deliveries})`, 'success');
+            }
 
         } catch (error) {
             console.error('❌ Employee sync error:', error);
@@ -84,6 +96,7 @@ const EmployeeSyncService = {
 
     /**
      * Sync employee profile (filtered by employeeId)
+     * @returns {number} 1 if profile synced, 0 otherwise
      */
     async syncEmployeeProfile(companyId, employeeId) {
         try {
@@ -98,8 +111,8 @@ const EmployeeSyncService = {
                 .get();
             
             if (snapshot.empty) {
-                console.warn('⚠️ Employee profile not found');
-                return;
+                console.warn('⚠️ Employee profile not found in Firestore');
+                return 0;
             }
             
             const doc = snapshot.docs[0];
@@ -108,7 +121,7 @@ const EmployeeSyncService = {
             // Verify this is actually for the logged-in employee (security check)
             if (String(profile.employeeId) !== String(employeeId)) {
                 console.error('❌ Security violation: Profile employeeId mismatch');
-                return;
+                return 0;
             }
             
             // Update session with latest role (in case it changed)
@@ -122,15 +135,17 @@ const EmployeeSyncService = {
             // Merge into local DB
             await employeeDB.put(STORES.PROFILE, profile);
             console.log('✅ Profile synced');
+            return 1;
             
         } catch (error) {
             console.error('❌ Profile sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
     /**
      * Sync attendance records (filtered by employeeId)
+     * @returns {number} Number of attendance records found in cloud
      */
     async syncAttendance(companyId, employeeId) {
         try {
@@ -163,19 +178,26 @@ const EmployeeSyncService = {
             
             console.log(`✅ Found ${cloudRecords.length} attendance records in cloud`);
             
+            if (cloudRecords.length === 0) {
+                console.warn('⚠️ No attendance records found for this employee. Admin may need to sync first.');
+            }
+            
             // Merge strategy: Update existing or insert new
             await this.mergeRecords(STORES.ATTENDANCE, cloudRecords);
             
             console.log(`✅ Attendance synced (${cloudRecords.length} records)`);
             
+            return cloudRecords.length;
+            
         } catch (error) {
             console.error('❌ Attendance sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
     /**
      * Sync delivery records (DSR sees all, others see only their own)
+     * @returns {number} Number of delivery records found in cloud
      */
     async syncDeliveries(companyId, employeeId) {
         try {
@@ -222,23 +244,35 @@ const EmployeeSyncService = {
             
             console.log(`✅ Found ${cloudRecords.length} delivery records in cloud`);
             
+            if (cloudRecords.length === 0 && !isDSR) {
+                console.warn('⚠️ No delivery records found for this employee. Admin may need to sync first.');
+            }
+            
             // Merge strategy: Update existing or insert new
             await this.mergeRecords(STORES.DELIVERIES, cloudRecords);
             
             console.log(`✅ Deliveries synced (${cloudRecords.length} records)`);
             
+            return cloudRecords.length;
+            
         } catch (error) {
             console.error('❌ Deliveries sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
     /**
      * Sync advance records (filtered by employeeId)
+     * @returns {number} Number of advance records found in cloud
      */
     async syncAdvances(companyId, employeeId) {
         try {
             console.log('📥 Syncing advances...');
+            console.log('📋 Query params:', { 
+                companyId, 
+                employeeId: String(employeeId),
+                employeeIdType: typeof employeeId
+            });
             
             // Query Firestore for this employee's advances
             const snapshot = await firestoreDB.collection('users')
@@ -262,14 +296,20 @@ const EmployeeSyncService = {
             
             console.log(`✅ Found ${cloudRecords.length} advance records in cloud`);
             
+            if (cloudRecords.length === 0) {
+                console.warn('⚠️ No advance records found for this employee. Admin may need to sync first.');
+            }
+            
             // Merge strategy: Update existing or insert new
             await this.mergeRecords(STORES.ADVANCES, cloudRecords);
             
             console.log(`✅ Advances synced (${cloudRecords.length} records)`);
             
+            return cloudRecords.length;
+            
         } catch (error) {
             console.error('❌ Advances sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
