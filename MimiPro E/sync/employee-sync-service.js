@@ -56,15 +56,15 @@ const EmployeeSyncService = {
             this.lastSyncTime = new Date();
             localStorage.setItem('lastSyncTime', this.lastSyncTime.toISOString());
 
-            // Calculate total synced items (including profile)
-            const totalSynced = syncResults.profile + syncResults.attendance + syncResults.deliveries + syncResults.advances;
+            // Calculate total synced items (including profile) - safeguard against undefined
+            const totalSynced = (syncResults.profile || 0) + (syncResults.attendance || 0) + (syncResults.deliveries || 0) + (syncResults.advances || 0);
             
             console.log('✅ Employee sync completed successfully');
             console.log('📊 Sync Summary:', syncResults);
             
             UIUtils.hideLoading();
             
-            // Show detailed sync message
+            // Show detailed sync message (profile not shown to keep message simple)
             if (totalSynced === 0) {
                 UIUtils.showToast('⚠️ Sync complete - No new data found. Ask admin to sync data first.', 'warning');
             } else {

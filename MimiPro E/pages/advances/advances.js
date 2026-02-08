@@ -92,7 +92,7 @@ const Advances = {
                     ` : ''}
                     ${totalAdvances === 0 ? `
                         <div style="margin-top: 8px; padding: 8px 12px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
-                            <small style="color: #0c5460;">ℹ️ No advances taken this month. You will receive your full salary of ৳${MoneyUtils.formatMoney(monthlySalary)}.</small>
+                            <small style="color: #0c5460;">ℹ️ No advances taken this month. You will receive your full salary.</small>
                         </div>
                     ` : ''}
                 </div>
