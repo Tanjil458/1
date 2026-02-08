@@ -1,8 +1,8 @@
 // Deliveries Page
 
 const Deliveries = {
-    startDate: DateUtils.getMonthStart(),
-    endDate: DateUtils.getMonthEnd(),
+    startDate: DateUtils.getDateDaysAgo(7), // Last 7 days (was getMonthStart)
+    endDate: DateUtils.getToday(), // Today (was getMonthEnd)
 
     async render() {
         try {
@@ -12,14 +12,23 @@ const Deliveries = {
             }
             
             const employeeId = session.employeeId;
+            const isDSR = session.role === 'DSR';
+            
             console.log('🚚 Deliveries: Loading data for employee:', employeeId);
+            console.log('🚚 DSR Mode:', isDSR);
 
             // Get deliveries data
-            const allDeliveries = (await employeeDB.getAll(STORES.DELIVERIES)).filter(d => d.employeeId === employeeId);
-            console.log('🚚 Loaded', allDeliveries.length, 'delivery records');
+            // For DSR: show ALL deliveries (no employeeId filter)
+            // For regular employee: show only their deliveries
+            const allDeliveries = await employeeDB.getAll(STORES.DELIVERIES);
+            const employeeDeliveries = isDSR 
+                ? allDeliveries 
+                : allDeliveries.filter(d => d.employeeId === employeeId);
+                
+            console.log('🚚 Loaded', employeeDeliveries.length, 'delivery records');
 
             // Filter by date range
-            const filteredDeliveries = allDeliveries.filter(del =>
+            const filteredDeliveries = employeeDeliveries.filter(del =>
                 del.date && del.date >= this.startDate && del.date <= this.endDate
             );
 
@@ -29,8 +38,10 @@ const Deliveries = {
             // Calculate total
             const totalAmount = filteredDeliveries.reduce((sum, del) => sum + (parseFloat(del.amount) || 0), 0);
 
+            const pageTitle = isDSR ? 'All Deliveries (DSR)' : 'My Deliveries';
+
         return `
-            <h2 class="section-title">My Deliveries</h2>
+            <h2 class="section-title">${pageTitle}</h2>
 
             <div class="date-filter">
                 <input type="date" class="date-input" id="startDate" value="${this.startDate}">
@@ -51,7 +62,7 @@ const Deliveries = {
 
             <div class="section">
                 <h3 class="section-title">Delivery Records</h3>
-                ${this.renderDeliveriesList(filteredDeliveries)}
+                ${this.renderDeliveriesList(filteredDeliveries, isDSR)}
             </div>
         `;
         } catch (error) {
@@ -61,13 +72,13 @@ const Deliveries = {
                     <div class="empty-icon">⚠️</div>
                     <div class="empty-title">Error loading deliveries</div>
                     <div class="empty-text">${error.message}</div>
-                    <button class="btn btn-primary" onclick="SyncManager.syncAll()" style="margin-top: 20px;">🔄 Try Syncing</button>
+                    <button class="btn btn-primary" onclick="EmployeeSyncService.syncNow()">🔄 Try Syncing</button>
                 </div>
             `;
         }
     },
 
-    renderDeliveriesList(deliveries) {
+    renderDeliveriesList(deliveries, isDSR) {
         if (deliveries.length === 0) {
             return `
                 <div class="empty-state">
@@ -87,6 +98,7 @@ const Deliveries = {
                             <div class="item-subtitle">
                                 ${DateUtils.formatDisplayDate(del.date)}
                                 ${del.area ? `• ${del.area}` : ''}
+                                ${isDSR && del.employeeName ? `• ${del.employeeName}` : ''}
                             </div>
                         </div>
                         <div class="item-right">

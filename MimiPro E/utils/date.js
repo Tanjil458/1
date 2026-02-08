@@ -76,5 +76,12 @@ const DateUtils = {
         if (dateString === this.formatDate(yesterday)) return 'Yesterday';
         
         return this.formatDisplayDate(dateString);
+    },
+
+    // Get date N days ago from today
+    getDateDaysAgo(days) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        return this.formatDate(date);
     }
 };

@@ -252,6 +252,7 @@ const SyncModule = {
             }
 
             const ownerId = this.currentUser.uid;
+            console.log('🔑 Admin Firebase Auth UID:', ownerId);
             
             // Step 1: Upload local changes to cloud (backup)
             await this.uploadLocalChanges(ownerId);

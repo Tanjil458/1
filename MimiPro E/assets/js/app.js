@@ -6,6 +6,7 @@ const App = {
         dashboard: Dashboard,
         attendance: Attendance,
         advances: Advances,
+        deliveries: Deliveries,
         profile: Profile
     },
 
@@ -19,6 +20,16 @@ const App = {
         if (employeeNameEl) {
             employeeNameEl.textContent = session.name || 'Employee';
         }
+
+        // Debug logging for sync troubleshooting
+        console.log('🔑 Employee Session Debug:');
+        console.log('  - Company ID:', session.companyId);
+        console.log('  - Employee ID:', session.employeeId);
+        console.log('  - Employee Role:', session.role);
+        console.log('  - Employee Name:', session.name);
+
+        // Add conditional navigation for DSR role
+        this.setupConditionalNavigation(session);
 
         // Initialize UI
         this.initNavigation();
@@ -37,6 +48,44 @@ const App = {
             console.log('🔄 Starting auto-sync...');
             EmployeeSyncService.syncNow();
         }, 1500);
+    },
+
+    setupConditionalNavigation(session) {
+        // Show deliveries navigation only for DSR role
+        if (session && session.role === 'DSR') {
+            console.log('🚚 DSR role detected - adding deliveries navigation');
+            
+            // Add to side navigation
+            const sideNav = document.querySelector('.side-links');
+            const deliveriesSideLink = document.createElement('a');
+            deliveriesSideLink.className = 'side-link';
+            deliveriesSideLink.href = '#deliveries';
+            deliveriesSideLink.innerHTML = '<span class="side-icon">🚚</span><span class="side-text">Deliveries</span>';
+            
+            // Insert before profile link
+            const profileLink = sideNav.querySelector('a[href="#profile"]');
+            sideNav.insertBefore(deliveriesSideLink, profileLink);
+            
+            // Add to bottom navigation
+            const bottomNav = document.querySelector('.bottom-nav');
+            const deliveriesBtn = document.createElement('button');
+            deliveriesBtn.className = 'nav-btn';
+            deliveriesBtn.setAttribute('data-page', 'deliveries');
+            deliveriesBtn.setAttribute('aria-label', 'Deliveries');
+            deliveriesBtn.innerHTML = `
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Deliveries icon">
+                    <title>Deliveries</title>
+                    <path d="M1 3h15v13H1zM16 8h7v13H8z"></path>
+                </svg>
+                <span class="nav-label">Deliveries</span>
+            `;
+            
+            // Insert before profile button
+            const profileBtn = bottomNav.querySelector('.nav-btn[data-page="profile"]');
+            bottomNav.insertBefore(deliveriesBtn, profileBtn);
+        } else {
+            console.log('ℹ️ Non-DSR role - deliveries navigation hidden');
+        }
     },
 
     initNavigation() {
