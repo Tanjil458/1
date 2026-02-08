@@ -81,7 +81,7 @@ const Advances = {
                         <span style="font-size: 14px; color: #dc3545;">Total Advances (This Month)</span>
                         <strong style="font-size: 14px; color: #dc3545;">- ৳${MoneyUtils.formatMoney(totalAdvances)}</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; padding-top: 12px; font-size: 17px; font-weight: 700; background: ${remainingBalance < 0 ? '#fff5f5' : '#f0fdf4'}; margin: 8px -16px 0; padding-left: 16px; padding-right: 16px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 17px; font-weight: 700; background: ${remainingBalance < 0 ? '#fff5f5' : '#f0fdf4'}; margin: 8px -16px 0; padding-left: 16px; padding-right: 16px; border-radius: 8px;">
                         <span style="color: ${remainingBalance < 0 ? '#dc3545' : '#28a745'};">Expected Payment</span>
                         <strong style="color: ${remainingBalance < 0 ? '#dc3545' : '#28a745'};">৳${MoneyUtils.formatMoney(remainingBalance)}</strong>
                     </div>

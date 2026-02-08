@@ -56,8 +56,8 @@ const EmployeeSyncService = {
             this.lastSyncTime = new Date();
             localStorage.setItem('lastSyncTime', this.lastSyncTime.toISOString());
 
-            // Calculate total synced items
-            const totalSynced = syncResults.attendance + syncResults.deliveries + syncResults.advances;
+            // Calculate total synced items (including profile)
+            const totalSynced = syncResults.profile + syncResults.attendance + syncResults.deliveries + syncResults.advances;
             
             console.log('✅ Employee sync completed successfully');
             console.log('📊 Sync Summary:', syncResults);
@@ -139,7 +139,7 @@ const EmployeeSyncService = {
             
         } catch (error) {
             console.error('❌ Profile sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
@@ -191,7 +191,7 @@ const EmployeeSyncService = {
             
         } catch (error) {
             console.error('❌ Attendance sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
@@ -257,7 +257,7 @@ const EmployeeSyncService = {
             
         } catch (error) {
             console.error('❌ Deliveries sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
@@ -309,7 +309,7 @@ const EmployeeSyncService = {
             
         } catch (error) {
             console.error('❌ Advances sync error:', error);
-            throw error;
+            return 0;
         }
     },
 
