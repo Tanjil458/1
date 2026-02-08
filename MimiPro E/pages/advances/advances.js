@@ -24,7 +24,7 @@ const Advances = {
 
             // Get advances data
             const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => String(adv.employeeId) === String(employeeId));
-            console.log('💰 Loaded', allAdvances.length, 'advance records');
+            console.log('💰 Loaded', allAdvances.length, 'advance records from local DB');
             
             // Log sample for debugging
             if (allAdvances.length > 0) {
@@ -36,6 +36,14 @@ const Advances = {
                     date: allAdvances[0].date,
                     reason: allAdvances[0].reason
                 });
+            } else {
+                console.warn('⚠️ No advances found in local DB for this employee');
+                console.warn('💡 Possible reasons:');
+                console.warn('   1. Admin has not created any advances yet');
+                console.warn('   2. Admin has not synced data to Firestore');
+                console.warn('   3. EmployeeId mismatch between admin and employee app');
+                console.warn('   4. Employee app has not synced yet');
+                console.warn('📌 Action: Click "Sync Now" button or ask admin to create advances and sync');
             }
 
             // Sort by date descending
@@ -64,18 +72,29 @@ const Advances = {
                 ${this.renderAdvancesTable(allAdvances, monthKey)}
 
                 <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
+                    <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">💰 Salary Calculation for ${monthName}</h4>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
-                        <span style="font-size: 14px; color: #6b7280;">Salary</span>
-                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)} (Monthly)</strong>
+                        <span style="font-size: 14px; color: #6b7280;">Monthly Salary</span>
+                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
-                        <span style="font-size: 14px; color: #6b7280;">Total Advance</span>
-                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(totalAdvances)}</strong>
+                        <span style="font-size: 14px; color: #dc3545;">Total Advances (This Month)</span>
+                        <strong style="font-size: 14px; color: #dc3545;">- ৳${MoneyUtils.formatMoney(totalAdvances)}</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; padding-top: 12px; font-size: 16px; font-weight: 700;">
-                        <span style="color: #2c3e50;">Remaining Balance</span>
-                        <strong style="color: #2c3e50;">৳${MoneyUtils.formatMoney(remainingBalance)}</strong>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; padding-top: 12px; font-size: 17px; font-weight: 700; background: ${remainingBalance < 0 ? '#fff5f5' : '#f0fdf4'}; margin: 8px -16px 0; padding-left: 16px; padding-right: 16px; border-radius: 8px;">
+                        <span style="color: ${remainingBalance < 0 ? '#dc3545' : '#28a745'};">Expected Payment</span>
+                        <strong style="color: ${remainingBalance < 0 ? '#dc3545' : '#28a745'};">৳${MoneyUtils.formatMoney(remainingBalance)}</strong>
                     </div>
+                    ${remainingBalance < 0 ? `
+                        <div style="margin-top: 8px; padding: 8px 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                            <small style="color: #856404;">⚠️ Note: You have taken more advances than your monthly salary. The excess will be deducted from next month.</small>
+                        </div>
+                    ` : ''}
+                    ${totalAdvances === 0 ? `
+                        <div style="margin-top: 8px; padding: 8px 12px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+                            <small style="color: #0c5460;">ℹ️ No advances taken this month. You will receive your full salary of ৳${MoneyUtils.formatMoney(monthlySalary)}.</small>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
 

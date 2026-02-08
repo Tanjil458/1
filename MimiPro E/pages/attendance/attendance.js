@@ -56,19 +56,27 @@ const Attendance = {
                     </div>
 
                     <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
-                        <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">Monthly Summary</h4>
+                        <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">📅 Monthly Attendance Summary</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Days Present</div>
-                                <div style="font-size: 20px; font-weight: 700; color: #28a745;" id="presentCount">0</div>
+                            <div style="text-align: center; padding: 12px; background: #d4edda; border-radius: 8px; border: 1px solid #c3e6cb;">
+                                <div style="font-size: 12px; color: #155724; margin-bottom: 4px; font-weight: 600;">Days Present</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #28a745;" id="presentCount">0</div>
                             </div>
-                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Days Absent</div>
-                                <div style="font-size: 20px; font-weight: 700; color: #dc3545;" id="absentCount">0</div>
+                            <div style="text-align: center; padding: 12px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb;">
+                                <div style="font-size: 12px; color: #721c24; margin-bottom: 4px; font-weight: 600;">Days Absent</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #dc3545;" id="absentCount">0</div>
                             </div>
-                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Total Days</div>
-                                <div style="font-size: 20px; font-weight: 700; color: #2c3e50;" id="totalCount">0</div>
+                            <div style="text-align: center; padding: 12px; background: #d1ecf1; border-radius: 8px; border: 1px solid #bee5eb;">
+                                <div style="font-size: 12px; color: #0c5460; margin-bottom: 4px; font-weight: 600;">Total Days</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #17a2b8;" id="totalCount">0</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; padding: 12px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+                            <div style="font-size: 13px; color: #0c5460; line-height: 1.5;">
+                                <strong>💡 Attendance Impact:</strong><br>
+                                • Each day present contributes to your monthly salary<br>
+                                • Days absent may reduce your earnings<br>
+                                • Check with admin for salary calculation details
                             </div>
                         </div>
                     </div>
@@ -248,6 +256,13 @@ const Attendance = {
                         date: records[0].date,
                         status: records[0].status
                     });
+                } else {
+                    console.warn('⚠️ No attendance records found in Firestore.');
+                    console.warn('💡 Possible reasons:');
+                    console.warn('   1. Admin has not marked any attendance yet');
+                    console.warn('   2. Admin has not synced data to Firestore');
+                    console.warn('   3. EmployeeId mismatch between admin and employee app');
+                    console.warn('📌 Action: Ask admin to mark attendance and click "Sync Now" in admin app');
                 }
                 
                 return records;
