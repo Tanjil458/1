@@ -93,7 +93,7 @@ const EmployeeSyncService = {
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('employees')
-                .where('id', '==', String(employeeId))
+                .where('employeeId', '==', String(employeeId)) // Fixed: was 'id', should be 'employeeId'
                 .where('deleted', '==', false) // Filter out deleted
                 .get();
             
@@ -106,9 +106,17 @@ const EmployeeSyncService = {
             const profile = { ...doc.data() };
             
             // Verify this is actually for the logged-in employee (security check)
-            if (String(profile.id) !== String(employeeId)) {
-                console.error('❌ Security violation: Profile ID mismatch');
+            if (String(profile.employeeId) !== String(employeeId)) {
+                console.error('❌ Security violation: Profile employeeId mismatch');
                 return;
+            }
+            
+            // Update session with latest role (in case it changed)
+            const session = getSession();
+            if (session && profile.role && profile.role !== session.role) {
+                console.log('🔄 Updating session role from', session.role, 'to', profile.role);
+                session.role = profile.role;
+                localStorage.setItem('employeeSession', JSON.stringify(session));
             }
             
             // Merge into local DB
