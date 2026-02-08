@@ -20,6 +20,7 @@ function expandCompanyId(companyId) {
     }
     
     // If it's already a long Firebase UID format (28+ chars), return as is
+    // Firebase UIDs are typically 28 characters long
     if (companyId.length >= 28) {
         console.log(`✅ Using provided Firebase UID (${companyId.length} chars)`);
         return companyId;
