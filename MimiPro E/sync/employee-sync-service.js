@@ -167,26 +167,45 @@ const EmployeeSyncService = {
     },
 
     /**
-     * Sync delivery records (filtered by employeeId)
+     * Sync delivery records (DSR sees all, others see only their own)
      */
     async syncDeliveries(companyId, employeeId) {
         try {
             console.log('📥 Syncing deliveries...');
             
-            // Query Firestore for this employee's deliveries
-            const snapshot = await firestoreDB.collection('users')
-                .doc(companyId)
-                .collection('delivery')
-                .where('employeeId', '==', String(employeeId))
-                .where('deleted', '==', false) // Filter out deleted
-                .get();
+            const session = getSession();
+            const isDSR = session && session.role === 'DSR';
+            
+            console.log('🚚 Delivery sync mode:', isDSR ? 'DSR (ALL deliveries)' : 'Regular (filtered by employeeId)');
+            
+            let snapshot;
+            
+            if (isDSR) {
+                // DSR sees ALL deliveries (not filtered by employeeId)
+                snapshot = await firestoreDB.collection('users')
+                    .doc(companyId)
+                    .collection('delivery')
+                    .where('deleted', '==', false) // Filter out deleted
+                    .orderBy('date', 'desc')
+                    .limit(100) // Get reasonable amount
+                    .get();
+            } else {
+                // Regular employee sees only their own deliveries
+                snapshot = await firestoreDB.collection('users')
+                    .doc(companyId)
+                    .collection('delivery')
+                    .where('employeeId', '==', String(employeeId))
+                    .where('deleted', '==', false) // Filter out deleted
+                    .get();
+            }
             
             const cloudRecords = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
                 
-                // Double-check filtering (security verification)
-                if (String(data.employeeId) === String(employeeId)) {
+                // For DSR, include all records
+                // For regular employee, double-check filtering (security verification)
+                if (isDSR || String(data.employeeId) === String(employeeId)) {
                     cloudRecords.push(data);
                 } else {
                     console.warn('⚠️ Filtered out delivery with wrong employeeId:', data.id);
