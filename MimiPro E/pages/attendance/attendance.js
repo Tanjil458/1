@@ -28,72 +28,55 @@ const Attendance = {
             const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
             return `
-                <section class="page active" id="attendance">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>My Attendance</h3>
-                            <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">
-                                Employee ID: ${this.employeeId}
-                            </div>
+                <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;">
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 18px; font-weight: 700; color: #2c3e50;">Attendance</h3>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px;">
+                            <button class="btn btn-secondary btn-small" id="attendancePrevMonth">‹</button>
+                            <span style="font-size: 14px; font-weight: 500;">Month</span>
+                            <input type="month" id="attendanceMonth" value="${monthKey}" class="form-input" style="display: inline-block; width: auto; padding: 6px 12px; font-size: 14px; border: 1px solid #e1e8ed; border-radius: 8px;" />
+                            <button class="btn btn-secondary btn-small" id="attendanceNextMonth">›</button>
                         </div>
-                        <div class="filters" style="margin-bottom: 8px; display:flex; gap:12px; align-items:center;">
-                            <div class="filter-group" style="display:flex; gap:8px; align-items:center;">
-                                <button class="btn btn-secondary btn-small" id="attendancePrevMonth">‹</button>
-                                <label for="attendanceMonth">Month:</label>
-                                <input type="month" id="attendanceMonth" value="${monthKey}" />
-                                <button class="btn btn-secondary btn-small" id="attendanceNextMonth">›</button>
-                            </div>
-                            <div style="margin-left:auto;">
-                                <button class="btn btn-secondary btn-small" id="attendanceRefresh">🔄 Refresh</button>
-                            </div>
-                        </div>
-                        <div style="overflow:auto;">
-                            <table class="table attendance-month-table" id="attendanceMonthTable">
-                                <thead>
-                                    <tr>
-                                        <th style="min-width:90px;">Date</th>
-                                        <th style="min-width:70px;">Day</th>
-                                        <th style="min-width:150px;">${this.employeeName}</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                        <div style="margin-top: 8px;">
+                            <span style="font-size: 12px; color: #6b7280; font-style: italic;">Click a cell to toggle presence (removal requires confirmation)</span>
                         </div>
                     </div>
 
-                    <div class="card" style="margin-top:12px;">
-                        <div class="card-header">
-                            <h4>Monthly Summary</h4>
-                        </div>
-                        <div style="overflow:auto;">
-                            <table class="table attendance-summary-table" id="attendanceSummaryTable">
-                                <thead>
-                                    <tr>
-                                        <th style="min-width:200px;">Description</th>
-                                        <th style="min-width:120px; text-align:right;">Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Days Present</td>
-                                        <td style="text-align:right; font-weight:700; color: var(--success);" id="presentCount">0</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Days Absent</td>
-                                        <td style="text-align:right; font-weight:700; color: var(--error);" id="absentCount">0</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Total Days in Month</td>
-                                        <td style="text-align:right; font-weight:700;" id="totalCount">0</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div style="overflow-x: auto; overflow-y: auto; max-height: 500px;">
+                        <table class="table" id="attendanceMonthTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;">
+                                <tr>
+                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Date</th>
+                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Day</th>
+                                    <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">${this.employeeName}</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
+                        <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">Monthly Summary</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Days Present</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #28a745;" id="presentCount">0</div>
+                            </div>
+                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Days Absent</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #dc3545;" id="absentCount">0</div>
+                            </div>
+                            <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Total Days</div>
+                                <div style="font-size: 20px; font-weight: 700; color: #2c3e50;" id="totalCount">0</div>
+                            </div>
                         </div>
                     </div>
-                    <p style="text-align: center; color: var(--muted); font-size: 12px; margin-top: 12px;">
-                        📡 Live data from admin panel
-                    </p>
-                </section>
+                </div>
+
+                <p style="text-align: center; color: var(--muted); font-size: 11px; margin-top: 8px;">
+                    📡 Live data from admin panel
+                </p>
             `;
         } catch (error) {
             console.error('❌ Attendance render error:', error);
@@ -206,17 +189,19 @@ const Attendance = {
                 const tr = document.createElement('tr');
                 if (dateObj.getDay() === 5) {
                     tr.classList.add('row-friday');
+                    tr.style.background = '#fff8e1';
                 }
                 if (dateKey === todayKey) {
                     tr.classList.add('row-today');
+                    tr.style.background = '#e3f2fd';
                 }
                 
                 const cellHTML = `
-                    <td>${dateDisplay}</td>
-                    <td>${dayShort}</td>
-                    <td class="attendance-cell">
-                        <button class="attendance-toggle ${isPresent ? 'present' : ''}" style="border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: default; background: ${isPresent ? '#d4edda' : '#f8f9fa'}; color: ${isPresent ? '#155724' : '#6c757d'};">
-                            ${isPresent ? '✔ Present' : '✗ Absent'}
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5; text-align: center; font-size: 12px;">${dateDisplay}</td>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5; text-align: center; font-size: 12px;">${dayShort}</td>
+                    <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5; text-align: center;">
+                        <button class="attendance-toggle ${isPresent ? 'present' : ''}" style="border: 1px solid ${isPresent ? '#28a745' : '#ddd'}; padding: 6px 12px; border-radius: 6px; cursor: default; background: ${isPresent ? '#d4edda' : '#f8f9fa'}; color: ${isPresent ? '#155724' : '#6c757d'}; font-size: 12px; font-weight: 500;">
+                            ${isPresent ? '✔' : ''}
                         </button>
                     </td>
                 `;

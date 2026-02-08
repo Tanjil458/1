@@ -81,7 +81,7 @@ const App = {
                 syncIcon.classList.add('spinning');
                 
                 try {
-                    await window.SyncModule.forceFullSync();
+                    await window.SyncModule.syncNow();
                 } catch (error) {
                     console.error('Sync error:', error);
                 } finally {

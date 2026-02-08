@@ -5,7 +5,6 @@ const App = {
     pages: {
         dashboard: Dashboard,
         attendance: Attendance,
-        deliveries: Deliveries,
         advances: Advances,
         profile: Profile
     },

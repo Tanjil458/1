@@ -12,6 +12,16 @@ const Advances = {
             console.log('💰 Advances: Loading data for employee:', employeeId);
             console.log('💰 Employee ID type:', typeof employeeId);
 
+            // Get current month key (or use selected month if re-rendering)
+            const monthInput = document.getElementById('advancesMonth');
+            let monthKey = monthInput ? monthInput.value : null;
+            if (!monthKey) {
+                const now = new Date();
+                monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            }
+            const [year, month] = monthKey.split('-');
+            const monthName = new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
             // Get advances data
             const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => String(adv.employeeId) === String(employeeId));
             console.log('💰 Loaded', allAdvances.length, 'advance records');
@@ -28,49 +38,50 @@ const Advances = {
                 });
             }
 
-            // Get attendance data to calculate days worked
-            const allAttendance = (await employeeDB.getAll(STORES.ATTENDANCE)).filter(att => String(att.employeeId) === String(employeeId));
-            const daysWorked = allAttendance.length;
-            console.log('📅 Days worked:', daysWorked);
-
             // Sort by date descending
-           allAdvances.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            allAdvances.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-            // Calculate totals
-            const totalAdvances = allAdvances.reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
-            const paidAdvances = allAdvances
-                .filter(adv => adv.status === 'paid')
-                .reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
-            const pendingAdvances = allAdvances
-                .filter(adv => adv.status === 'pending')
-                .reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
+            // Calculate totals for current month (filter by monthKey)
+            const monthAdvances = allAdvances.filter(adv => adv.date && adv.date.startsWith(monthKey));
+            const totalAdvances = monthAdvances.reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
+
+            // Get employee salary (assumed monthly for now)
+            const monthlySalary = parseFloat(session.salary) || 9999;
+            const remainingBalance = monthlySalary - totalAdvances;
 
         return `
-            <h2 class="section-title">My Advances</h2>
+            <div style="background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;">
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 18px; font-weight: 700; color: #2c3e50;">Employee Details</h3>
+                    <div style="font-size: 14px; font-weight: 600; color: #2c3e50; margin-top: 4px;">${session.name} <span style="font-size: 12px; font-weight: 400; color: #6b7280;">(${employeeId})</span></div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${session.phone || '—'}</div>
+                    <div style="margin-top: 12px;">
+                        <input type="month" id="advancesMonth" class="form-input" value="${monthKey}" style="display: inline-block; width: auto; padding: 6px 12px; font-size: 14px; border: 1px solid #e1e8ed; border-radius: 8px;" />
+                    </div>
+                </div>
 
-            <div class="summary-card">
-                <div class="summary-row">
-                    <span class="summary-label">Total Advances</span>
-                    <span class="summary-value">${MoneyUtils.formatMoney(totalAdvances)}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Paid</span>
-                    <span class="summary-value text-success">${MoneyUtils.formatMoney(paidAdvances)}</span>
-                </div>
-                <div class="summary-row">
-                    <span class="summary-label">Pending</span>
-                    <span class="summary-value text-warning">${MoneyUtils.formatMoney(pendingAdvances)}</span>
-                </div>
-                <div class="summary-row summary-row-separator">
-                    <span class="summary-label">Days Worked (Total)</span>
-                    <span class="summary-value text-primary">${daysWorked}</span>
+                <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">${monthName} - Advances</h4>
+                ${this.renderAdvancesTable(allAdvances, monthKey)}
+
+                <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                        <span style="font-size: 14px; color: #6b7280;">Salary</span>
+                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)} (Monthly)</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                        <span style="font-size: 14px; color: #6b7280;">Total Advance</span>
+                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(totalAdvances)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; padding-top: 12px; font-size: 16px; font-weight: 700;">
+                        <span style="color: #2c3e50;">Remaining Balance</span>
+                        <strong style="color: #2c3e50;">৳${MoneyUtils.formatMoney(remainingBalance)}</strong>
+                    </div>
                 </div>
             </div>
 
-            <div class="section">
-                <h3 class="section-title">Advance History</h3>
-                ${this.renderAdvancesList(allAdvances)}
-            </div>
+            <p style="text-align: center; color: var(--muted); font-size: 11px; margin-top: 8px;">
+                📡 Live data from admin panel
+            </p>
         `;
         } catch (error) {
             console.error('❌ Advances render error:', error);
@@ -83,6 +94,52 @@ const Advances = {
                 </div>
             `;
         }
+    },
+
+    renderAdvancesTable(advances, monthKey) {
+        // Filter advances by selected month
+        const monthAdvances = advances.filter(adv => adv.date && adv.date.startsWith(monthKey));
+        
+        if (monthAdvances.length === 0) {
+            return `<p style="text-align: center; color: #6c757d; padding: 20px 0; font-size: 13px;">No advances for this month</p>`;
+        }
+
+        return `
+            <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="background: #f8f9fa;">
+                    <tr>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Date</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Type</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Product</th>
+                        <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Qty</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${monthAdvances.map(adv => {
+                        const date = DateUtils.formatDisplayDate(adv.date);
+                        const type = adv.type === 'product' ? 'Product' : 'Cash';
+                        const product = adv.productName || '—';
+                        const qty = adv.quantity || '—';
+                        const amount = MoneyUtils.formatMoney(adv.amount || adv.totalValue || 0);
+                        
+                        return `
+                            <tr>
+                                <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5;">${date}</td>
+                                <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5;">${type}</td>
+                                <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5;">${product}</td>
+                                <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5; text-align: center;">${qty}</td>
+                                <td style="padding: 10px 8px; border-bottom: 1px solid #f1f3f5; text-align: right;">৳${amount}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    <tr>
+                        <td colspan="4" style="padding: 10px 8px; text-align: right; font-weight: 700; border-top: 2px solid #dee2e6;">Total</td>
+                        <td style="padding: 10px 8px; text-align: right; font-weight: 700; border-top: 2px solid #dee2e6;">৳${MoneyUtils.formatMoney(monthAdvances.reduce((sum, adv) => sum + (parseFloat(adv.amount || adv.totalValue) || 0), 0))}</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
     },
 
     renderAdvancesList(advances) {
@@ -126,6 +183,17 @@ const Advances = {
     },
 
     attachEventListeners() {
-        // No interactive elements in this page
+        const monthInput = document.getElementById('advancesMonth');
+        if (monthInput) {
+            monthInput.addEventListener('change', async () => {
+                // Re-render the entire page with the new month
+                const pageContent = document.getElementById('pageContent');
+                if (pageContent) {
+                    const html = await this.render();
+                    pageContent.innerHTML = html;
+                    this.attachEventListeners(); // Re-attach event listeners
+                }
+            });
+        }
     }
 };
