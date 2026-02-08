@@ -71,6 +71,25 @@ const Dashboard = {
             <div class="section">
                 <p class="text-muted text-center">Last synced: ${EmployeeSyncService.getLastSyncTime()}</p>
                 <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="EmployeeSyncService.syncNow()">🔄 Sync Now</button>
+                
+                ${attendance.length === 0 && advances.length === 0 ? `
+                    <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                        <div style="font-size: 13px; color: #856404; line-height: 1.6;">
+                            <strong>⚠️ No Data Found</strong><br>
+                            If you've clicked "Sync Now" and still see no data, it means:<br>
+                            <ul style="margin: 8px 0; padding-left: 20px;">
+                                <li>Admin hasn't created any attendance or advance records yet, OR</li>
+                                <li>Admin hasn't synced their data to the cloud</li>
+                            </ul>
+                            <strong>Action Required:</strong> Ask the admin to:
+                            <ol style="margin: 8px 0; padding-left: 20px;">
+                                <li>Mark your attendance in the admin app</li>
+                                <li>Click the "🔄 Sync Now" button in the admin app</li>
+                                <li>Then click "🔄 Sync Now" here again</li>
+                            </ol>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `;
         } catch (error) {
