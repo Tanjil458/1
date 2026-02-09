@@ -831,7 +831,7 @@ const SettingsModule = {
         }
 
         try {
-            await SyncModule.forceFullSync();
+            await SyncModule.syncNow(true); // Pass true for manual sync
         } finally {
             if (syncBtn) {
                 syncBtn.disabled = false;

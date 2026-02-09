@@ -466,7 +466,21 @@ const EmployeesModule = {
                     totalValue,
                     date,
                     note,
-                    type: 'product'
+                    type: 'product',
+                    deleted: false
+                });
+
+                // Also create a corresponding generic advance record so employee app (which
+                // syncs the `advances` collection) receives this product advance.
+                await DB.add('advances', {
+                    employeeId,
+                    employeeName: employee?.name || '',
+                    amount: totalValue,
+                    date,
+                    note: `Product: ${productName} (${quantity} × ৳${unitPrice})`,
+                    type: 'product',
+                    status: 'pending',
+                    deleted: false
                 });
             }
 
@@ -477,7 +491,10 @@ const EmployeesModule = {
                     amount: cashAmount,
                     date,
                     note,
-                    type: 'cash'
+                    reason: note || 'Cash advance',
+                    type: 'cash',
+                    status: 'pending',
+                    deleted: false
                 });
             }
 

@@ -61,7 +61,9 @@ const FirestoreService = {
                 .where('employeeId', '==', String(employeeId))
                 .get();
             
-            const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const results = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(rec => rec.deleted !== true); // Exclude deleted, but allow undefined
             console.log('✅ Fetched', results.length, 'attendance records');
             
             // Log details of each record for debugging
@@ -91,7 +93,9 @@ const FirestoreService = {
                 .collection('delivery')
                 .where('employeeId', '==', String(employeeId))
                 .get();
-            const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const results = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(rec => rec.deleted !== true); // Exclude deleted, but allow undefined
             console.log('✅ Fetched', results.length, 'delivery records');
             return results;
         } catch (error) {

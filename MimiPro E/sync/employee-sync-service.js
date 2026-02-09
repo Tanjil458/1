@@ -16,8 +16,9 @@ const EmployeeSyncService = {
     /**
      * Main sync function - Download only
      * Filters all data by current employee's ID
+     * @param {boolean} isManualSync - true if user clicked sync button, false if auto-sync on startup
      */
-    async syncNow() {
+    async syncNow(isManualSync = false) {
         const session = getSession();
         
         if (!session || !session.employeeId || !session.companyId) {
@@ -50,14 +51,16 @@ const EmployeeSyncService = {
                 profile: await this.syncEmployeeProfile(companyId, employeeId),
                 attendance: await this.syncAttendance(companyId, employeeId),
                 deliveries: await this.syncDeliveries(companyId, employeeId),
-                advances: await this.syncAdvances(companyId, employeeId)
+                advances: await this.syncAdvances(companyId, employeeId),
+                productAdvances: await this.syncProductAdvances(companyId, employeeId),
+                repayments: await this.syncRepayments(companyId, employeeId)
             };
 
             this.lastSyncTime = new Date();
             localStorage.setItem('lastSyncTime', this.lastSyncTime.toISOString());
 
             // Calculate total synced items (including profile) - safeguard against undefined
-            const totalSynced = (syncResults.profile || 0) + (syncResults.attendance || 0) + (syncResults.deliveries || 0) + (syncResults.advances || 0);
+            const totalSynced = (syncResults.profile || 0) + (syncResults.attendance || 0) + (syncResults.deliveries || 0) + (syncResults.advances || 0) + (syncResults.productAdvances || 0) + (syncResults.repayments || 0);
             
             console.log('✅ Employee sync completed successfully');
             console.log('📊 Sync Summary:', syncResults);
@@ -68,7 +71,15 @@ const EmployeeSyncService = {
             if (totalSynced === 0) {
                 UIUtils.showToast('⚠️ Sync complete - No new data found. Ask admin to sync data first.', 'warning');
             } else {
-                UIUtils.showToast(`✅ Synced ${totalSynced} records (Attendance: ${syncResults.attendance}, Advances: ${syncResults.advances}, Deliveries: ${syncResults.deliveries})`, 'success');
+                const advTotal = (syncResults.advances || 0) + (syncResults.productAdvances || 0);
+                UIUtils.showToast(`✅ Synced ${totalSynced} records (Attendance: ${syncResults.attendance}, Advances: ${advTotal}, Deliveries: ${syncResults.deliveries})`, 'success');
+                
+                // Auto-reload only on MANUAL sync, not on startup auto-sync (prevents infinite loop)
+                if (isManualSync) {
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
             }
 
         } catch (error) {
@@ -106,8 +117,7 @@ const EmployeeSyncService = {
             const snapshot = await firestoreDB.collection('users')
                 .doc(companyId)
                 .collection('employees')
-                .where('employeeId', '==', String(employeeId)) // Fixed: was 'id', should be 'employeeId'
-                .where('deleted', '==', false) // Filter out deleted
+                .where('employeeId', '==', String(employeeId))
                 .get();
             
             if (snapshot.empty) {
@@ -116,7 +126,13 @@ const EmployeeSyncService = {
             }
             
             const doc = snapshot.docs[0];
-            const profile = { ...doc.data() };
+            const profile = doc.data();
+            
+            // Skip if deleted
+            if (profile.deleted === true) {
+                console.warn('⚠️ Employee profile is marked as deleted');
+                return 0;
+            }
             
             // Verify this is actually for the logged-in employee (security check)
             if (String(profile.employeeId) !== String(employeeId)) {
@@ -161,16 +177,17 @@ const EmployeeSyncService = {
                 .doc(companyId)
                 .collection('attendance')
                 .where('employeeId', '==', String(employeeId))
-                .where('deleted', '==', false) // Filter out deleted
                 .get();
             
             const cloudRecords = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
                 
-                // Double-check filtering (security verification)
-                if (String(data.employeeId) === String(employeeId)) {
+                // Double-check filtering (security + exclude deleted)
+                if (String(data.employeeId) === String(employeeId) && data.deleted !== true) {
                     cloudRecords.push(data);
+                } else if (data.deleted === true) {
+                    console.log('❌ Filtered out deleted attendance:', data.id);
                 } else {
                     console.warn('⚠️ Filtered out record with wrong employeeId:', data.id);
                 }
@@ -215,7 +232,6 @@ const EmployeeSyncService = {
                 snapshot = await firestoreDB.collection('users')
                     .doc(companyId)
                     .collection('delivery')
-                    .where('deleted', '==', false) // Filter out deleted
                     .orderBy('date', 'desc')
                     .limit(100) // Get reasonable amount
                     .get();
@@ -225,13 +241,18 @@ const EmployeeSyncService = {
                     .doc(companyId)
                     .collection('delivery')
                     .where('employeeId', '==', String(employeeId))
-                    .where('deleted', '==', false) // Filter out deleted
                     .get();
             }
             
             const cloudRecords = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
+                
+                // Filter out deleted records client-side (accepts records without deleted field)
+                if (data.deleted === true) {
+                    console.log('❌ Filtered out deleted delivery:', data.id);
+                    return;
+                }
                 
                 // For DSR, include all records
                 // For regular employee, double-check filtering (security verification)
@@ -279,16 +300,17 @@ const EmployeeSyncService = {
                 .doc(companyId)
                 .collection('advances')
                 .where('employeeId', '==', String(employeeId))
-                .where('deleted', '==', false) // Filter out deleted
                 .get();
             
             const cloudRecords = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
                 
-                // Double-check filtering (security verification)
-                if (String(data.employeeId) === String(employeeId)) {
+                // Double-check filtering (security + exclude deleted)
+                if (String(data.employeeId) === String(employeeId) && data.deleted !== true) {
                     cloudRecords.push(data);
+                } else if (data.deleted === true) {
+                    console.log('❌ Filtered out deleted advance:', data.id);
                 } else {
                     console.warn('⚠️ Filtered out advance with wrong employeeId:', data.id);
                 }
@@ -383,6 +405,112 @@ const EmployeeSyncService = {
     },
 
     /**
+     * Sync product advance records (filtered by employeeId)
+     * @returns {number} Number of product advance records found in cloud
+     */
+    async syncProductAdvances(companyId, employeeId) {
+        try {
+            console.log('📥 Syncing product advances...');
+            console.log('📋 Query params:', { 
+                companyId, 
+                employeeId: String(employeeId),
+                employeeIdType: typeof employeeId
+            });
+            
+            // Query Firestore for this employee's product advances
+            const snapshot = await firestoreDB.collection('users')
+                .doc(companyId)
+                .collection('productAdvances')
+                .where('employeeId', '==', String(employeeId))
+                .get();
+            
+            const cloudRecords = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                
+                // Double-check filtering (security + exclude deleted)
+                if (String(data.employeeId) === String(employeeId) && data.deleted !== true) {
+                    cloudRecords.push(data);
+                } else if (data.deleted === true) {
+                    console.log('❌ Filtered out deleted product advance:', data.id);
+                } else {
+                    console.warn('⚠️ Filtered out product advance with wrong employeeId:', data.id);
+                }
+            });
+            
+            console.log(`✅ Found ${cloudRecords.length} product advance records in cloud`);
+            
+            if (cloudRecords.length === 0) {
+                console.warn('⚠️ No product advance records found for this employee.');
+            }
+            
+            // Merge strategy: Update existing or insert new
+            await this.mergeRecords('productAdvances', cloudRecords);
+            
+            console.log(`✅ Product advances synced (${cloudRecords.length} records)`);
+            
+            return cloudRecords.length;
+            
+        } catch (error) {
+            console.error('❌ Product advances sync error:', error);
+            return 0;
+        }
+    },
+
+    /**
+     * Sync repayment records (filtered by employeeId)
+     * @returns {number} Number of repayment records found in cloud
+     */
+    async syncRepayments(companyId, employeeId) {
+        try {
+            console.log('📥 Syncing repayments...');
+            console.log('📋 Query params:', { 
+                companyId, 
+                employeeId: String(employeeId),
+                employeeIdType: typeof employeeId
+            });
+            
+            // Query Firestore for this employee's repayments
+            const snapshot = await firestoreDB.collection('users')
+                .doc(companyId)
+                .collection('repayments')
+                .where('employeeId', '==', String(employeeId))
+                .get();
+            
+            const cloudRecords = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                
+                // Double-check filtering (security + exclude deleted)
+                if (String(data.employeeId) === String(employeeId) && data.deleted !== true) {
+                    cloudRecords.push(data);
+                } else if (data.deleted === true) {
+                    console.log('❌ Filtered out deleted repayment:', data.id);
+                } else {
+                    console.warn('⚠️ Filtered out repayment with wrong employeeId:', data.id);
+                }
+            });
+            
+            console.log(`✅ Found ${cloudRecords.length} repayment records in cloud`);
+            
+            if (cloudRecords.length === 0) {
+                console.warn('⚠️ No repayment records found for this employee.');
+            }
+            
+            // Merge strategy: Update existing or insert new
+            await this.mergeRecords('repayments', cloudRecords);
+            
+            console.log(`✅ Repayments synced (${cloudRecords.length} records)`);
+            
+            return cloudRecords.length;
+            
+        } catch (error) {
+            console.error('❌ Repayments sync error:', error);
+            return 0;
+        }
+    },
+
+    /**
      * Get last sync time formatted
      */
     getLastSyncTime() {
@@ -414,21 +542,5 @@ const EmployeeSyncService = {
 // Make available globally
 window.EmployeeSyncService = EmployeeSyncService;
 
-// Sync on app launch (with delay to ensure auth is ready)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            const session = getSession();
-            if (session && session.employeeId && session.companyId) {
-                EmployeeSyncService.syncNow();
-            }
-        }, 2000);
-    });
-} else {
-    setTimeout(() => {
-        const session = getSession();
-        if (session && session.employeeId && session.companyId) {
-            EmployeeSyncService.syncNow();
-        }
-    }, 2000);
-}
+// Note: Auto-sync is handled by app.js on initialization
+// Removed duplicate auto-sync code to prevent conflicts

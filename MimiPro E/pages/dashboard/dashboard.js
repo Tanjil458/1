@@ -70,7 +70,7 @@ const Dashboard = {
 
             <div class="section">
                 <p class="text-muted text-center">Last synced: ${EmployeeSyncService.getLastSyncTime()}</p>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="EmployeeSyncService.syncNow()">🔄 Sync Now</button>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="EmployeeSyncService.syncNow(true)">🔄 Sync Now</button>
                 
                 ${attendance.length === 0 && advances.length === 0 ? `
                     <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
@@ -99,7 +99,7 @@ const Dashboard = {
                     <div class="empty-icon">⚠️</div>
                     <div class="empty-title">Error loading dashboard</div>
                     <div class="empty-text">${error.message}</div>
-                    <button class="btn btn-primary" onclick="SyncManager.syncAll()" style="margin-top: 20px;">🔄 Try Syncing</button>
+                    <button class="btn btn-primary" onclick="EmployeeSyncService.syncNow(true)" style="margin-top: 20px;">🔄 Try Syncing</button>
                 </div>
             `;
         }

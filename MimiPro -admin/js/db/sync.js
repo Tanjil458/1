@@ -225,10 +225,10 @@ const SyncModule = {
     },
 
     /**
-     * Main sync function - called manually
-     * Implements backup + restore model
+     * Main sync function - called manually or on startup
+     * @param {boolean} isManualSync - true if user clicked sync button, false if auto-sync on login
      */
-    async syncNow() {
+    async syncNow(isManualSync = false) {
         if (!this.syncEnabled || !this.currentUser) {
             if (window.App) {
                 App.showToast('Please sign in to sync', 'warning');
@@ -267,6 +267,13 @@ const SyncModule = {
             
             if (window.App) {
                 App.showToast('Sync complete!', 'success');
+            }
+            
+            // Auto-reload only on MANUAL sync, not on startup auto-sync (prevents infinite loop)
+            if (isManualSync) {
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
             }
             
             // Update sync status after completion

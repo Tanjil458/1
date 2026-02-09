@@ -142,7 +142,7 @@ const App = {
         const syncBtn = document.getElementById('syncBtn');
         if (syncBtn) {
             syncBtn.addEventListener('click', () => {
-                EmployeeSyncService.syncNow();
+                EmployeeSyncService.syncNow(true); // Pass true for manual sync (enables reload)
             });
         }
     },

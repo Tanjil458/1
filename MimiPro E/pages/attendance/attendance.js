@@ -57,14 +57,10 @@ const Attendance = {
 
                     <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
                         <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">📅 Monthly Attendance Summary</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div style="text-align: center; padding: 12px; background: #d4edda; border-radius: 8px; border: 1px solid #c3e6cb;">
                                 <div style="font-size: 12px; color: #155724; margin-bottom: 4px; font-weight: 600;">Days Present</div>
                                 <div style="font-size: 24px; font-weight: 700; color: #28a745;" id="presentCount">0</div>
-                            </div>
-                            <div style="text-align: center; padding: 12px; background: #f8d7da; border-radius: 8px; border: 1px solid #f5c6cb;">
-                                <div style="font-size: 12px; color: #721c24; margin-bottom: 4px; font-weight: 600;">Days Absent</div>
-                                <div style="font-size: 24px; font-weight: 700; color: #dc3545;" id="absentCount">0</div>
                             </div>
                             <div style="text-align: center; padding: 12px; background: #d1ecf1; border-radius: 8px; border: 1px solid #bee5eb;">
                                 <div style="font-size: 12px; color: #0c5460; margin-bottom: 4px; font-weight: 600;">Total Days</div>
@@ -293,14 +289,11 @@ const Attendance = {
 
     updateSummary(attendanceRecords, daysInMonth) {
         const presentCount = attendanceRecords.length;
-        const absentCount = daysInMonth - presentCount;
 
         const presentEl = document.getElementById('presentCount');
-        const absentEl = document.getElementById('absentCount');
         const totalEl = document.getElementById('totalCount');
 
         if (presentEl) presentEl.textContent = presentCount;
-        if (absentEl) absentEl.textContent = absentCount;
         if (totalEl) totalEl.textContent = daysInMonth;
     }
 };

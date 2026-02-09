@@ -22,9 +22,43 @@ const Advances = {
             const [year, month] = monthKey.split('-');
             const monthName = new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
-            // Get advances data
-            const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => String(adv.employeeId) === String(employeeId));
-            console.log('💰 Loaded', allAdvances.length, 'advance records from local DB');
+            // Get advances data (include productAdvances as well)
+            const localAdvances = await employeeDB.getAll(STORES.ADVANCES) || [];
+            const localProductAdvances = await employeeDB.getAll('productAdvances') || [];
+
+            // Filter by employee FIRST before merging
+            const myAdvances = localAdvances.filter(adv => String(adv.employeeId) === String(employeeId));
+            const myProductAdvances = localProductAdvances.filter(adv => String(adv.employeeId) === String(employeeId));
+            
+            console.log(`💰 Employee ${employeeId} has ${myAdvances.length} advances and ${myProductAdvances.length} productAdvances`);
+
+            // From advances: keep only cash advances (filter out product type to avoid duplicates)
+            const cashAdvances = myAdvances.filter(adv => {
+                const type = (adv.type || '').toLowerCase();
+                return type !== 'product'; // Exclude product advances (shown from productAdvances instead)
+            });
+
+            // Map productAdvances to same format
+            const mappedProductAdvances = myProductAdvances.map(p => ({
+                id: p.id,
+                employeeId: p.employeeId,
+                employeeName: p.employeeName || p.employee || '',
+                amount: p.totalValue || p.amount || 0,
+                totalValue: p.totalValue,
+                productName: p.productName,
+                quantity: p.quantity,
+                unitPrice: p.unitPrice,
+                date: p.date,
+                reason: p.note || p.reason || `Product: ${p.productName}`,
+                type: 'product',
+                status: p.status || 'pending',
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt
+            }));
+            
+            // Merge: cash advances + product advances
+            const allAdvances = [...cashAdvances, ...mappedProductAdvances];
+            console.log('💰 Loaded', allAdvances.length, 'advance records from local DB (including productAdvances)');
             
             // Log sample for debugging
             if (allAdvances.length > 0) {
@@ -53,8 +87,28 @@ const Advances = {
             const monthAdvances = allAdvances.filter(adv => adv.date && adv.date.startsWith(monthKey));
             const totalAdvances = monthAdvances.reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
 
-            // Get employee salary (assumed monthly for now)
-            const monthlySalary = parseFloat(session.salary) || 9999;
+            // Calculate daily salary based on attendance for daily employees
+            const baseSalary = parseFloat(session.salary) || 0;
+            const salaryType = (session.salaryType || 'Daily').toLowerCase();
+            let monthlySalary = baseSalary;
+
+            if (salaryType === 'daily') {
+                // Fetch attendance for the month and count days present
+                try {
+                    const attendanceRecords = await employeeDB.getAll(STORES.ATTENDANCE) || [];
+                    const monthAttendance = attendanceRecords.filter(att => 
+                        String(att.employeeId) === String(employeeId) && 
+                        att.date && 
+                        att.date.startsWith(monthKey)
+                    );
+                    const daysPresent = monthAttendance.filter(att => att.present === true).length;
+                    monthlySalary = baseSalary * daysPresent;
+                    console.log(`💰 Daily salary: ${baseSalary} × ${daysPresent} days = ৳${monthlySalary}`);
+                } catch (error) {
+                    console.warn('⚠️ Could not calculate daily salary from attendance:', error);
+                    monthlySalary = baseSalary;
+                }
+            }
             const remainingBalance = monthlySalary - totalAdvances;
 
         return `
@@ -73,10 +127,25 @@ const Advances = {
 
                 <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e9ecef;">
                     <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">💰 Salary Calculation for ${monthName}</h4>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
-                        <span style="font-size: 14px; color: #6b7280;">Monthly Salary</span>
-                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)}</strong>
-                    </div>
+                    ${salaryType === 'daily' ? `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                            <span style="font-size: 14px; color: #6b7280;">Daily Rate</span>
+                            <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(baseSalary)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                            <span style="font-size: 14px; color: #6b7280;">Days Worked</span>
+                            <strong style="font-size: 14px; color: #2c3e50;">${Math.round(monthlySalary / baseSalary)} days</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                            <span style="font-size: 14px; color: #6b7280;">Total Salary</span>
+                            <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)}</strong>
+                        </div>
+                    ` : `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
+                            <span style="font-size: 14px; color: #6b7280;">Monthly Salary</span>
+                            <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)}</strong>
+                        </div>
+                    `}
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
                         <span style="font-size: 14px; color: #dc3545;">Total Advances (This Month)</span>
                         <strong style="font-size: 14px; color: #dc3545;">- ৳${MoneyUtils.formatMoney(totalAdvances)}</strong>
@@ -109,7 +178,7 @@ const Advances = {
                     <div class="empty-icon">⚠️</div>
                     <div class="empty-title">Error loading advances</div>
                     <div class="empty-text">${error.message}</div>
-                    <button class="btn btn-primary" onclick="SyncManager.syncAll()" style="margin-top: 20px;">🔄 Try Syncing</button>
+                    <button class="btn btn-primary" onclick="EmployeeSyncService.syncNow(true)" style="margin-top: 20px;">🔄 Try Syncing</button>
                 </div>
             `;
         }

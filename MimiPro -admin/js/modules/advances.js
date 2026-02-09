@@ -308,7 +308,8 @@ const AdvancesModule = {
 			note,
 			reason: note, // Add reason field for employee app display
 			status: 'pending', // Default status
-			type: 'cash'
+			type: 'cash',
+			deleted: false
 		});
 
 		App.showToast('Cash advance saved', 'success');
@@ -349,7 +350,8 @@ const AdvancesModule = {
 			// Keep product details for admin view
 			productName,
 			quantity,
-			unitPrice
+			unitPrice,
+			deleted: false
 		});
 		
 		// Also save to productAdvances for admin tracking
@@ -361,7 +363,8 @@ const AdvancesModule = {
 			unitPrice,
 			totalValue,
 			date,
-			type: 'product'
+			type: 'product',
+			deleted: false
 		});
 
 		App.showToast('Product advance saved', 'success');
@@ -396,7 +399,8 @@ const AdvancesModule = {
 			amount,
 			date,
 			method,
-			note
+			note,
+			deleted: false
 		});
 
 		App.showToast('Repayment saved', 'success');

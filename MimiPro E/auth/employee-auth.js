@@ -146,6 +146,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             phone: employeeData.phone || employeeData.mobile,
             role: employeeData.role,
             salary: employeeData.salary,
+            salaryType: employeeData.salaryType || 'Daily',
             loginTime: new Date().toISOString()
         };
         
