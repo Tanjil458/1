@@ -152,7 +152,7 @@ const AttendanceModule = {
 				<tr>
 					<th style="min-width:90px;">Date</th>
 					<th style="min-width:70px;">Day</th>
-					${this.employees.map(emp => `<th data-emp="${emp.id}" title="${emp.name}">${emp.name}</th>`).join('')}
+					${this.employees.map(emp => `<th data-emp="${emp.employeeId}" title="${emp.name}">${emp.name}</th>`).join('')}
 				</tr>
 			`;
 			const tbody = table.querySelector('tbody');
@@ -198,10 +198,10 @@ const AttendanceModule = {
 					<td>${dateDisplay}</td>
 					<td>${dayShort}</td>
 					${this.employees.map(emp => {
-						const rec = (attendanceByDate[dateKey] || {})[String(emp.id)];
+						const rec = (attendanceByDate[dateKey] || {})[String(emp.employeeId)];
 						const present = !!rec;
 						const recordId = rec?.id || '';
-						return `<td class="attendance-cell"><button class="attendance-toggle ${present ? 'present' : ''}" data-date="${dateKey}" data-emp="${emp.id}" data-record="${recordId}" aria-label="Toggle attendance">${present ? '✔' : ''}</button></td>`;
+						return `<td class="attendance-cell"><button class="attendance-toggle ${present ? 'present' : ''}" data-date="${dateKey}" data-emp="${emp.employeeId}" data-record="${recordId}" aria-label="Toggle attendance">${present ? '✔' : ''}</button></td>`;
 					}).join('')}
 				`;
 				tbody.appendChild(tr);
@@ -225,7 +225,7 @@ const AttendanceModule = {
 			const summaryTbody = document.querySelector('#attendanceSummaryTable tbody');
 			if (summaryTbody) {
 				const totals = {};
-				this.employees.forEach(emp => totals[emp.id] = 0);
+				this.employees.forEach(emp => totals[emp.employeeId] = 0);
 				Object.keys(attendanceByDate).forEach(date => {
 					Object.keys(attendanceByDate[date] || {}).forEach(empId => {
 						totals[empId] = (totals[empId] || 0) + 1;
@@ -234,7 +234,7 @@ const AttendanceModule = {
 				summaryTbody.innerHTML = this.employees.map(emp => `
 					<tr>
 						<td>${emp.name}</td>
-						<td style="text-align:right; font-weight:700;">${totals[emp.id] || 0}</td>
+						<td style="text-align:right; font-weight:700;">${totals[emp.employeeId] || 0}</td>
 					</tr>
 				`).join('');
 			}
@@ -281,14 +281,14 @@ const AttendanceModule = {
 		}
 
 		this.employees.forEach(emp => {
-			const isPresent = presentSet.has(String(emp.id));
+			const isPresent = presentSet.has(String(emp.employeeId));
 			const row = document.createElement('tr');
-			const record = recordMap.get(String(emp.id));
+			const record = recordMap.get(String(emp.employeeId));
 			row.innerHTML = `
 				<td>${emp.name}</td>
 				<td><span class="badge ${isPresent ? 'badge-success' : 'badge-warning'}">${isPresent ? 'Present' : 'Absent'}</span></td>
 				<td>
-					<button class="btn ${isPresent ? 'btn-secondary' : 'btn-primary'} btn-small" data-emp="${emp.id}" data-present="${isPresent}" data-record="${record?.id || ''}">
+					<button class="btn ${isPresent ? 'btn-secondary' : 'btn-primary'} btn-small" data-emp="${emp.employeeId}" data-present="${isPresent}" data-record="${record?.id || ''}">
 						${isPresent ? 'Mark Absent' : 'Mark Present'}
 					</button>
 				</td>
@@ -314,9 +314,13 @@ const AttendanceModule = {
 				this.showRemoveConfirm(dateKey, employeeId, recordId);
 				return;
 			} else if (!isPresent) {
-				const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+				const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+				if (!employee) {
+					App.showToast('Employee not found', 'error');
+					return;
+				}
 				await DB.add('attendance', {
-					employeeId: String(employeeId),  // Always store as string for consistency
+					employeeId: String(employee.employeeId),  // Use custom employee ID not database ID
 					employeeName: employee?.name || '',
 					date: dateKey,
 					status: 'present',

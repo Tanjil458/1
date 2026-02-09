@@ -6,25 +6,35 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseapp.com https://*.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firestore.googleapis.com wss://*.firebaseio.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://firestore.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com wss://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
     <title>MimiPro</title>
+    
+    <!-- Global error handler - MUST load first -->
+    <script>
+      // Set up error handlers before Firebase loads
+      window.addEventListener('unhandledrejection', function(e) {
+        // Suppress Firebase Cloud Messaging errors (app doesn't use FCM)
+        const errorMessage = e.reason?.message || e.reason?.toString() || '';
+        if (errorMessage.includes('subscribeInfo') || 
+            errorMessage.includes('messaging') ||
+            errorMessage.includes('Installations') ||
+            errorMessage.includes('FCM')) {
+          console.warn('⚠️ Firebase Messaging/FCM error suppressed (not used):', errorMessage);
+          e.preventDefault();
+          return;
+        }
+        console.error('🚨 Unhandled Promise Rejection:', e.reason);
+      });
+      window.addEventListener('error', function(e) {
+        console.error('🚨 Script Error:', e.message, 'at', e.filename, 'line', e.lineno);
+      });
+      console.log('✅ Error handlers initialized');
+    </script>
     
     <!-- Firebase SDKs - loaded synchronously for webview compatibility -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" onerror="console.error('Failed to load Firebase App SDK')"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" onerror="console.error('Failed to load Firebase Auth SDK')"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" onerror="console.error('Failed to load Firebase Firestore SDK')"></script>
-    
-    <!-- Global error handler for debugging -->
-    <script>
-      window.addEventListener('error', function(e) {
-        console.error('🚨 Script Error:', e.message, 'at', e.filename, 'line', e.lineno);
-        console.error('Full error:', e.error);
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        console.error('🚨 Unhandled Promise Rejection:', e.reason);
-      });
-      console.log('✅ Error handlers initialized');
-    </script>
     
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/layout.css" />

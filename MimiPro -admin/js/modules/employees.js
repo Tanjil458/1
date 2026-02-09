@@ -152,7 +152,7 @@ const EmployeesModule = {
                 const salaryRate = this.parseNumber(emp.salary) || 0;
 
                 const workingDays = (this.attendance || [])
-                    .filter(record => String(record.employeeId) === String(emp.id))
+                    .filter(record => String(record.employeeId) === String(emp.employeeId))
                     .filter(record => record.date && record.date.startsWith(monthKey))
                     .filter(record => record.status === 'present' || record.present === true)
                     .length;
@@ -160,11 +160,11 @@ const EmployeesModule = {
                 const salaryTotal = salaryType === 'daily' ? (workingDays * salaryRate) : salaryRate;
 
                 const totalCash = (this.advances || [])
-                    .filter(r => String(r.employeeId) === String(emp.id))
+                    .filter(r => String(r.employeeId) === String(emp.employeeId))
                     .reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
 
                 const totalProduct = (this.productAdvances || [])
-                    .filter(r => String(r.employeeId) === String(emp.id))
+                    .filter(r => String(r.employeeId) === String(emp.employeeId))
                     .reduce((sum, row) => sum + this.parseNumber(row.totalValue), 0);
 
                 const remaining = salaryTotal - (totalCash + totalProduct);
@@ -206,13 +206,13 @@ const EmployeesModule = {
         }
 
         listEl.innerHTML = this.employees.map(emp => {
-            const isPresent = presentSet.has(String(emp.id));
+            const isPresent = presentSet.has(String(emp.employeeId));
             const salaryType = emp.salaryType || 'Daily';
             const salaryValue = this.parseNumber(emp.salary) || 0;
 
             // Calculate advances/repayments for this employee
-            const cashRows = (this.advances || []).filter(r => String(r.employeeId) === String(emp.id));
-            const productRows = (this.productAdvances || []).filter(r => String(r.employeeId) === String(emp.id));
+            const cashRows = (this.advances || []).filter(r => String(r.employeeId) === String(emp.employeeId));
+            const productRows = (this.productAdvances || []).filter(r => String(r.employeeId) === String(emp.employeeId));
 
             const totalCash = cashRows.reduce((sum, row) => sum + this.parseNumber(row.amount), 0);
             const totalProduct = productRows.reduce((sum, row) => sum + this.parseNumber(row.totalValue), 0);
@@ -220,7 +220,7 @@ const EmployeesModule = {
             // Determine salary total for current month (daily uses attendance records)
             const monthKey = new Date().toISOString().slice(0, 7);
             const workingDays = (this.attendance || [])
-                .filter(record => String(record.employeeId) === String(emp.id))
+                .filter(record => String(record.employeeId) === String(emp.employeeId))
                 .filter(record => record.date && record.date.startsWith(monthKey))
                 .filter(record => record.status === 'present' || record.present === true)
                 .length;
@@ -230,7 +230,7 @@ const EmployeesModule = {
             const remainingBalance = salaryTotal - (totalCash + totalProduct);
 
             return `
-                <div class="employee-card" data-details="${emp.id}">
+                <div class="employee-card" data-details="${emp.employeeId}">
                     <div class="employee-card-header">
                         <div class="employee-name">${emp.name}</div>
                         <div class="employee-right">
@@ -241,7 +241,7 @@ const EmployeesModule = {
                     <div class="employee-meta">Role: ${emp.role || '—'}</div>
                     <div class="employee-meta">Salary: ৳${this.formatCurrency(salaryValue)} (${salaryType})</div>
                     <div class="employee-card-actions">
-                        <button class="btn btn-primary btn-small" data-advance="${emp.id}">Add Advance</button>
+                        <button class="btn btn-primary btn-small" data-advance="${emp.employeeId}">Add Advance</button>
                     </div>
                 </div>
             `;
@@ -397,7 +397,7 @@ const EmployeesModule = {
     },
 
     getEmployeeById(employeeId) {
-        return this.employees.find(emp => String(emp.id) === String(employeeId));
+        return this.employees.find(emp => String(emp.employeeId) === String(employeeId));
     },
 
     openAdvanceModal(employeeId) {

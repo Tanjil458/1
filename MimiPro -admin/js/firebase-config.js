@@ -77,6 +77,20 @@ function initializeFirebase(retries = 5, delay = 500) {
             authDomain: FirebaseConfig.authDomain
         });
         
+        // Suppress Firebase Cloud Messaging auto-initialization errors
+        // (FCM is not used in this app, but Firebase may try to initialize it)
+        setTimeout(() => {
+            if (window.firebase.messaging && typeof window.firebase.messaging.isSupported === 'function') {
+                window.firebase.messaging.isSupported().then(supported => {
+                    if (!supported) {
+                        console.log('ℹ️ Firebase Messaging not supported in this environment (this is OK)');
+                    }
+                }).catch(err => {
+                    console.warn('⚠️ Firebase Messaging initialization suppressed:', err.message);
+                });
+            }
+        }, 100);
+        
         // Update visual status indicator
         updateFirebaseStatus('online');
         

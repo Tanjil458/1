@@ -256,7 +256,7 @@ const AdvancesModule = {
 			select.innerHTML = keepAll ? '<option value="">All Employees</option>' : '<option value="">Select employee</option>';
 			this.employees.forEach(emp => {
 				const option = document.createElement('option');
-				option.value = emp.id;
+				option.value = emp.employeeId;
 				option.textContent = emp.name;
 				select.appendChild(option);
 			});
@@ -295,9 +295,13 @@ const AdvancesModule = {
 			return;
 		}
 
-		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		await DB.add('advances', {
-			employeeId: String(employeeId), // Always store as string for Firestore compatibility
+			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
 			amount,
 			date,
@@ -327,11 +331,15 @@ const AdvancesModule = {
 			return;
 		}
 
-		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		
 		// Store product advance as a regular advance with amount=totalValue
 		await DB.add('advances', {
-			employeeId: String(employeeId), // Always store as string for Firestore compatibility
+			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
 			amount: totalValue, // Store total value as amount for employee app
 			date,
@@ -346,7 +354,7 @@ const AdvancesModule = {
 		
 		// Also save to productAdvances for admin tracking
 		await DB.add('productAdvances', {
-			employeeId: String(employeeId),
+			employeeId: String(employee.employeeId),
 			employeeName: employee?.name || '',
 			productName,
 			quantity,
@@ -377,9 +385,13 @@ const AdvancesModule = {
 			return;
 		}
 
-		const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		await DB.add('repayments', {
-			employeeId: String(employeeId), // Always store as string for Firestore compatibility
+			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
 			amount,
 			date,
