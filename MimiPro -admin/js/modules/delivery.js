@@ -726,7 +726,7 @@ const DeliveryModule = {
 			select.innerHTML = '<option value="">Select employee</option>';
 			(this.employees || []).forEach(emp => {
 				const option = document.createElement('option');
-				option.value = emp.id;
+				option.value = emp.employeeId;
 				option.textContent = emp.name;
 				select.appendChild(option);
 			});
@@ -748,7 +748,7 @@ const DeliveryModule = {
 		if (select) {
 			(this.employees || []).forEach(emp => {
 				const option = document.createElement('option');
-				option.value = emp.id;
+				option.value = emp.employeeId;
 				option.textContent = emp.name;
 				select.appendChild(option);
 			});

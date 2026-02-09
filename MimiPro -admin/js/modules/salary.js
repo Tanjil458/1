@@ -130,7 +130,7 @@ const SalaryModule = {
 		}
 
 		this.employees.forEach(emp => {
-			const empId = String(emp.id);
+			const empId = String(emp.employeeId);
 			const daysPresent = attendanceByEmployee[empId] || 0;
 			const salaryType = (emp.salaryType || 'Daily').toLowerCase();
 			const baseSalary = parseFloat(emp.salary) || 0;
