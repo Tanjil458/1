@@ -1,298 +1,76 @@
-# FIX EMPLOYEE APP SYNC SYSTEM - Advances & Attendance Not Syncing
+## CRITICAL BUG: Employee Advances Not Syncing to Employee App
 
-## PROBLEM SUMMARY
-**Employee MD1 (DSR, Company: 017000000000) cannot see their data in the employee app even though it exists in admin panel.**
+### Problem Summary
+Employee advances are being saved and synced to Firestore successfully from the admin app, but the employee app cannot retrieve them. The advances show in the employee app UI but sync shows "0 advance records found in cloud."
 
-**Observed Issue (Feb 2026):**
-- Admin panel shows: MD1 has ₹500 advance for February 2026
-- Employee app console shows: "Found 0 advance records in cloud"
-- Employee app displays: "No advance records found for this employee"
-- Same issue affects attendance data
+### Root Cause
+**Field Mismatch: Database ID vs Custom Employee ID**
 
-## ROOT CAUSE
-The employee app queries Firestore using `companyId` from the employee session, but this value does NOT match the admin's Firebase Auth UID where the data is actually stored.
+When saving advances in the admin app, the code is storing the employee's **database auto-increment ID** (like "1", "2", "3") as the `employeeId` field, instead of the **custom employee ID** (like "EMP001", "EMP002", "EMP003").
 
-**Data Storage Path (Admin):**
-```
-Firestore: users/{adminFirebaseUID}/advances/{advanceId}
-Firestore: users/{adminFirebaseUID}/attendance/{attendanceId}
-```
+When employees log in to the employee app, they use their custom employee ID (e.g., "EMP001"), so the sync query `where('employeeId', '==', 'EMP001')` finds nothing because the advances in Firestore have `employeeId: "1"` instead of `employeeId: "EMP001"`.
 
-**Data Query Path (Employee):**
-```
-Firestore: users/{sessionCompanyId}/advances/...
-Firestore: users/{sessionCompanyId}/attendance/...
-```
+### Files to Fix
 
-**The Fix:** `sessionCompanyId` MUST equal `adminFirebaseUID`
+#### 1. mimipro -admin/js/modules/advances.js
+**Line ~256-262:** `populateEmployeeSelects()` method
+- Dropdown options use `emp.id` instead of `emp.employeeId`
+- Change `option.value = emp.id;` to `option.value = emp.employeeId;`
 
----
-
-## STEP-BY-STEP DEBUG PROCESS
-
-### STEP 1: Identify the Admin's Firebase UID
-**File:** `mimipro -admin/js/db/sync.js` or anywhere after admin login
-
-**Add debug log:**
+**Line ~299:** `saveCashAdvance()` method  
+- Uses `employeeId` from dropdown (which is database ID)
+- Change to find employee and use `employee.employeeId`
 ```javascript
-// After Firebase Auth login
-const adminUID = firebase.auth().currentUser.uid;
-console.log('🔑 ADMIN FIREBASE UID:', adminUID);
+const employee = this.employees.find(emp => String(emp.id) === String(employeeId));
+await DB.add('advances', {
+    employeeId: String(employee.employeeId), // Use custom ID not database ID
+    employeeName: employee?.name || '',
+    // ... rest of fields
+});
 ```
 
-**Expected output:** Something like `"Xy9kL2mN4pQ5rS8t"`
+**Line ~333:** `saveProductAdvance()` method
+- Same issue - uses database ID instead of custom employee ID
+- Apply same fix as above
 
----
+#### 2. mimipro -admin/js/modules/employees.js
+**Line ~297-310:** Employee card rendering
+- Find where employee dropdowns are populated (likely uses `emp.id`)
+- Change to use `emp.employeeId`
 
-### STEP 2: Check What CompanyId Employee Is Using
-**File:** `MimiPro E/index.html` - in the login success handler
+**Line ~474:** `saveEmployeeAdvance()` method in employees module
+- The `employeeId` variable comes from dropdown, which is database ID
+- Need to find the employee object and use `employee.employeeId` instead
 
-**Add debug log:**
-```javascript
-// After employee login (around line where session is created)
-const session = getSession();
-console.log('👤 EMPLOYEE SESSION:', session);
-console.log('🏢 Employee CompanyId:', session.companyId);
-console.log('👨 Employee ID:', session.employeeId);
-```
+#### 3. Verify Other Modules
+Check these files for similar issues where employee-related data is saved:
+- `mimipro -admin/js/modules/attendance.js` - attendance records
+- `mimipro -admin/js/modules/delivery.js` - delivery records
+- `mimipro -admin/js/modules/salary.js` - salary records
 
-**Expected output:**
-```
-Employee CompanyId: "017000000000"  ← This is WRONG if it doesn't match admin UID
-Employee ID: "1"
-```
+All should use `employee.employeeId` (custom ID like "EMP001") not `employee.id` (database ID like "1")
 
----
+### Expected Outcome After Fix
+1. Admin saves advance with `employeeId: "EMP001"` (custom ID)
+2. Advance syncs to Firestore with correct custom employee ID
+3. Employee logs in with "EMP001"
+4. Employee sync queries `where('employeeId', '==', 'EMP001')`
+5. Finds matching advances successfully
+6. Employee app shows advances correctly
 
-### STEP 3: Compare the Two Values
-**The companyId from employee session MUST match the admin's Firebase UID exactly.**
+### Testing Steps
+1. Create a new cash advance for an employee in admin app
+2. Check browser console - advance should save with `employeeId: "EMP001"` (custom ID)
+3. Sync from admin app
+4. Check Firestore console - verify `employeeId` field has custom ID like "EMP001"
+5. Login to employee app with that employee
+6. Sync - should now find and download the advance
+7. Verify advance appears in employee app
 
-If they don't match:
-- `adminUID = "Xy9kL2mN4pQ5rS8t"`
-- `sessionCompanyId = "017000000000"`
-- ❌ **MISMATCH = No data found**
-
-If they match:
-- `adminUID = "Xy9kL2mN4pQ5rS8t"`
-- `sessionCompanyId = "Xy9kL2mN4pQ5rS8t"`
-- ✅ **MATCH = Data syncs correctly**
-
----
-
-### STEP 4: Fix the CompanyId Mapping
-
-**Option A: Check `company-id-map.js`**
-File: `MimiPro E/auth/company-id-map.js`
-
-This file likely maps phone numbers or usernames to company IDs. Update it:
-```javascript
-// OLD (example):
-const COMPANY_MAP = {
-    '017000000000': '017000000000'  // ❌ Wrong
-};
-
-// NEW:
-const COMPANY_MAP = {
-    '017000000000': 'Xy9kL2mN4pQ5rS8t'  // ✅ Use actual admin Firebase UID
-};
-```
-
-**Option B: Check Firestore Employee Document**
-The employee document in Firestore might have a `companyId` field. Verify:
-```
-Firestore Path: users/{adminUID}/employees/{employeeId}
-Document should have: { companyId: "{adminUID}", phone: "017000000000", ... }
-```
-
-If the companyId in the employee document is wrong, update it in admin panel or Firestore.
-
-**Option C: Fix in Login Logic**
-File: `MimiPro E/index.html` - login handler
-
-If the companyId is hardcoded or derived from phone number, change it to fetch from the employee's Firestore document:
-```javascript
-// During login, after fetching employee from Firestore:
-const companyId = employeeDoc.companyId || employeeDoc.ownerId;  // Use the ownerId field
-```
-
----
-
-## FILES TO INVESTIGATE & FIX
-
-### 1. Employee Login Flow
-**File:** `MimiPro E/index.html` (search for "login" function)
-- **Check:** How is `companyId` determined during login?
-- **Find:** The line where session is created: `createSession({ companyId, employeeId, ... })`
-- **Fix:** Ensure `companyId` is set to admin's Firebase UID
-
-### 2. Company ID Mapping
-**File:** `MimiPro E/auth/company-id-map.js`
-- **Check:** Does this file exist? What mappings does it contain?
-- **Fix:** Update mapping to use admin's actual Firebase UID
-
-### 3. Session Storage
-**File:** `MimiPro E/auth/session.js`
-- **Check:** Verify session structure includes `companyId`
-- **Fix:** Ensure session stores the correct companyId value
-
-### 4. Employee Sync Service
-**File:** `MimiPro E/sync/employee-sync-service.js`
-- **Lines 137-175:** `syncAttendance()` function
-- **Lines 207-240:** `syncAdvances()` function
-- **Check:** Both use `companyId` from session to query Firestore
-- **No changes needed here** - this is correct, just need to ensure companyId is right
-
-### 5. Admin Sync Service
-**File:** `mimipro -admin/js/db/sync.js`
-- **Check:** Verify data is written to `users/{currentUser.uid}/advances/` and `users/{currentUser.uid}/attendance/`
-- **Find:** The `pushToCloud()` or similar function
-- **Verify:** It uses `firebase.auth().currentUser.uid` as the document path
-
----
-
-## VERIFICATION CHECKLIST
-
-After fixing the companyId mapping:
-
-### Test 1: Verify Session CompanyId
-1. Open employee app in browser
-2. Open Developer Console (F12)
-3. Go to Application tab → Local Storage
-4. Find `employeeSession` key
-5. Verify `companyId` matches admin's Firebase UID
-
-### Test 2: Check Firestore Data
-1. Open Firebase Console → Firestore Database
-2. Navigate to `users` collection
-3. Find document with ID = admin's Firebase UID
-4. Verify subcollections exist: `advances`, `attendance`, `employees`
-5. Check one advance document has `employeeId: "1"` (for MD1)
-
-### Test 3: Employee App Sync
-1. Employee logs in as MD1
-2. Click sync button (or it auto-syncs on login)
-3. Check console logs:
-   - ✅ "Found 1 advance records in cloud" (or more)
-   - ✅ "Advances synced (1 records)"
-   - ✅ "Sync Summary: { advances: 1, attendance: X, ... }"
-4. Open Advances page
-5. Verify ₹500 advance appears for February 2026
-
-### Test 4: Attendance Sync
-1. Same employee (MD1)
-2. Check console logs for attendance sync
-3. ✅ "Found X attendance records in cloud"
-4. Open Attendance page
-5. Verify attendance data matches admin panel
-
----
-
-## FIRESTORE QUERY EXAMPLES
-
-**Admin writes data:**
-```javascript
-// Admin's Firebase UID = "Xy9kL2mN4pQ5rS8t"
-await firestore.collection('users')
-    .doc('Xy9kL2mN4pQ5rS8t')  // Admin's UID
-    .collection('advances')
-    .doc('advance123')
-    .set({
-        employeeId: '1',
-        amount: 500,
-        date: '2026-02-08',
-        deleted: false
-    });
-```
-
-**Employee reads data (MUST use same path):**
-```javascript
-// Employee session companyId MUST be "Xy9kL2mN4pQ5rS8t"
-const snapshot = await firestore.collection('users')
-    .doc('Xy9kL2mN4pQ5rS8t')  // Same as admin UID!
-    .collection('advances')
-    .where('employeeId', '==', '1')
-    .where('deleted', '==', false)
-    .get();
-```
-
----
-
-## QUICK FIX SCRIPT
-
-If you can't find where to fix the code, run this in employee app console to test:
-
-```javascript
-// Get current session
-const session = JSON.parse(localStorage.getItem('employeeSession'));
-console.log('Current:', session);
-
-// Manually update companyId (replace with actual admin UID)
-session.companyId = 'Xy9kL2mN4pQ5rS8t';  // ← REPLACE THIS
-localStorage.setItem('employeeSession', JSON.stringify(session));
-
-// Reload page and try sync again
-location.reload();
-```
-
-If this works, then you know the fix is to update the companyId value in the login flow.
-
----
-
-## EXPECTED CONSOLE OUTPUT (AFTER FIX)
-
-**Employee App Console:**
-```
-🔄 Starting employee sync...
-👤 Employee ID: 1
-🏢 Company ID: Xy9kL2mN4pQ5rS8t
-📋 Syncing profile...
-✅ Profile synced
-📅 Syncing attendance...
-✅ Found 3 attendance records in cloud
-✅ Attendance synced (3 records)
-💰 Syncing advances...
-✅ Found 1 advance records in cloud
-✅ Advances synced (1 records)
-🚚 Syncing deliveries...
-✅ Found 0 delivery records in cloud
-✅ Deliveries synced (0 records)
-📊 Sync Summary: { profile: 1, attendance: 3, deliveries: 0, advances: 1 }
-✅ Employee sync completed successfully
-```
-
----
-
-## COMMON MISTAKES TO AVOID
-
-1. **Don't use phone number as companyId** - Use admin's Firebase Auth UID
-2. **Don't hardcode "017000000000"** - This is a phone number, not a Firestore document ID
-3. **Don't create new collections** - Query existing `users/{adminUID}/` path
-4. **Don't modify employee-sync-service.js queries** - They are correct, just need right companyId
-5. **Don't create fake data** - Fix the reference to existing data
-
----
-
-## FINAL CHECK COMMAND
-
-Run in browser console after implementing fix:
-
-```javascript
-// Admin App:
-console.log('Admin UID:', firebase.auth().currentUser.uid);
-
-// Employee App:
-const session = JSON.parse(localStorage.getItem('employeeSession'));
-console.log('Session CompanyId:', session.companyId);
-console.log('MATCH:', firebase.auth ? 'Use admin UID instead' : session.companyId);
-```
-
----
-
-## PRIORITY
-
-**🔴 CRITICAL - Fix Immediately:**
-Fix the companyId mismatch so advances and attendance sync works.
-
-**After this is fixed, all other features will work automatically.**
-
-The employee app code for syncing is already correct - it just needs the right companyId to query the right Firestore path.
+### Important Notes
+- Employee record has TWO ID fields:
+  - `id`: Auto-increment database ID (1, 2, 3...) - for internal IndexedDB use only
+  - `employeeId`: Custom ID (EMP001, EMP002...) - for sync/queries and employee login
+- ALL synced data (advances, attendance, deliveries) MUST use `employeeId` (custom ID)
+- Employee app authentication uses `employeeId` (custom ID) for login
+- The fix must be applied consistently across ALL modules that save employee-related data

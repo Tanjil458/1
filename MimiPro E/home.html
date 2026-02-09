@@ -7,6 +7,22 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>MimiPro Employee</title>
     
+    <!-- Global error handler - MUST load first -->
+    <script>
+      window.addEventListener('unhandledrejection', function(e) {
+        const errorMessage = e.reason?.message || e.reason?.toString() || '';
+        if (errorMessage.includes('subscribeInfo') || 
+            errorMessage.includes('messaging') ||
+            errorMessage.includes('Installations') ||
+            errorMessage.includes('FCM')) {
+          console.warn('⚠️ Firebase Messaging/FCM error suppressed (not used):', errorMessage);
+          e.preventDefault();
+          return;
+        }
+        console.error('🚨 Unhandled Promise Rejection:', e.reason);
+      });
+    </script>
+    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>

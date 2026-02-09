@@ -33,6 +33,20 @@ const DB = {
 
             request.onsuccess = () => {
                 this.instance = request.result;
+                
+                // Handle version change (e.g., when another tab opens with newer version)
+                this.instance.onversionchange = () => {
+                    console.warn('⚠️ Database version changed, closing connection');
+                    this.instance.close();
+                    this.instance = null;
+                };
+                
+                // Handle unexpected connection close
+                this.instance.onclose = () => {
+                    console.warn('⚠️ Database connection closed unexpectedly');
+                    this.instance = null;
+                };
+                
                 console.log('✅ Database initialized');
                 resolve(this.instance);
             };
@@ -197,97 +211,116 @@ const DB = {
     },
 
     // Generic CRUD operations
-    async getAll(storeName, includeDeleted = false) {
-        if (!this.instance) {
+    async ensureConnection() {
+        // If no instance or instance is not valid, reinitialize
+        if (!this.instance || (this.instance && !this.instance.objectStoreNames)) {
+            console.log('🔄 Reinitializing database connection...');
             await this.init();
         }
+        return this.instance;
+    },
+
+    async getAll(storeName, includeDeleted = false) {
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.getAll();
-            request.onsuccess = () => {
-                const results = request.result;
-                // Filter out deleted records unless explicitly requested
-                const filtered = includeDeleted ? results : results.filter(item => !item.deleted);
-                resolve(filtered);
-            };
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const results = request.result;
+                    // Filter out deleted records unless explicitly requested
+                    const filtered = includeDeleted ? results : results.filter(item => !item.deleted);
+                    resolve(filtered);
+                };
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async getById(storeName, id) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async add(storeName, data) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const now = new Date().toISOString();
-            const request = store.add({
-                ...data,
-                createdAt: now,
-                updatedAt: now,
-                synced: false,
-                deleted: false,
-                syncVersion: 1
-            });
-            request.onsuccess = async () => {
-                const id = request.result;
-                
-                // Update sync indicator
-                if (window.SyncModule) {
-                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
-                }
-                
-                resolve(id);
-            };
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const now = new Date().toISOString();
+                const request = store.add({
+                    ...data,
+                    createdAt: now,
+                    updatedAt: now,
+                    synced: false,
+                    deleted: false,
+                    syncVersion: 1
+                });
+                request.onsuccess = async () => {
+                    const id = request.result;
+                    
+                    // Update sync indicator
+                    if (window.SyncModule) {
+                        setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
+                    }
+                    
+                    resolve(id);
+                };
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async update(storeName, data) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put({
-                ...data,
-                updatedAt: new Date().toISOString(),
-                synced: false,
-                deleted: data.deleted || false,
-                syncVersion: (data.syncVersion || 0) + 1
-            });
-            request.onsuccess = async () => {
-                // Update sync indicator
-                if (window.SyncModule) {
-                    setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
-                }
-                
-                resolve(request.result);
-            };
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put({
+                    ...data,
+                    updatedAt: new Date().toISOString(),
+                    synced: false,
+                    deleted: data.deleted || false,
+                    syncVersion: (data.syncVersion || 0) + 1
+                });
+                request.onsuccess = async () => {
+                    // Update sync indicator
+                    if (window.SyncModule) {
+                        setTimeout(() => window.SyncModule.checkSyncStatus(), 100);
+                    }
+                    
+                    resolve(request.result);
+                };
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async delete(storeName, id) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         // Implement soft delete - mark as deleted instead of hard delete
         const existing = await this.getById(storeName, id);
         if (!existing) {
@@ -304,42 +337,51 @@ const DB = {
     },
 
     async clear(storeName) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.clear();
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async put(storeName, data) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(data);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(data);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     },
 
     async query(storeName, indexName, value) {
-        if (!this.instance) {
-            await this.init();
-        }
+        await this.ensureConnection();
         return new Promise((resolve, reject) => {
-            const transaction = this.instance.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const index = store.index(indexName);
-            const request = index.getAll(value);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            try {
+                const transaction = this.instance.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const index = store.index(indexName);
+                const request = index.getAll(value);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            } catch (error) {
+                console.error('❌ Transaction error:', error);
+                reject(error);
+            }
         });
     }
 };
