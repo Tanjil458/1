@@ -296,6 +296,10 @@ const AdvancesModule = {
 		}
 
 		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		await DB.add('advances', {
 			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
@@ -328,6 +332,10 @@ const AdvancesModule = {
 		}
 
 		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		
 		// Store product advance as a regular advance with amount=totalValue
 		await DB.add('advances', {
@@ -378,6 +386,10 @@ const AdvancesModule = {
 		}
 
 		const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+		if (!employee) {
+			App.showToast('Employee not found', 'error');
+			return;
+		}
 		await DB.add('repayments', {
 			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',

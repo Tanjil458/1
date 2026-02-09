@@ -315,6 +315,10 @@ const AttendanceModule = {
 				return;
 			} else if (!isPresent) {
 				const employee = this.employees.find(emp => String(emp.employeeId) === String(employeeId));
+				if (!employee) {
+					App.showToast('Employee not found', 'error');
+					return;
+				}
 				await DB.add('attendance', {
 					employeeId: String(employee.employeeId),  // Use custom employee ID not database ID
 					employeeName: employee?.name || '',
