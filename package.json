@@ -1,4 +1,12 @@
 {
+  "name": "mimipro-testing",
+  "version": "1.0.0",
+  "description": "Comprehensive testing suite for MimiPro applications",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "test:all": "node tests/run-tests.js",
+    "test:report": "node tests/run-tests.js && cat COMPREHENSIVE_TESTING_REPORT.md"
+  },
   "devDependencies": {
     "@playwright/test": "^1.58.2"
   }
