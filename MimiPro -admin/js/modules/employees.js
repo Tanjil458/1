@@ -523,6 +523,80 @@ const EmployeesModule = {
         if (totalEl) totalEl.value = (qty * price).toFixed(2);
     },
 
+    async editEmployeeAdvance(id, type) {
+        let advance;
+        if (type === 'cash') {
+            advance = await DB.getById('advances', id);
+        } else {
+            advance = await DB.getById('productAdvances', id);
+        }
+
+        if (!advance) {
+            App.showToast('Advance not found', 'error');
+            return;
+        }
+
+        // Close details modal
+        this.closeDetailsModal();
+
+        // Navigate to advances page
+        App.navigateTo('advancesPage');
+
+        // Wait for page to load
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (type === 'cash' && window.AdvancesModule) {
+            window.AdvancesModule.editCashAdvance(id);
+        } else if (type === 'product' && window.AdvancesModule) {
+            window.AdvancesModule.editProductAdvance(id);
+        }
+    },
+
+    async deleteEmployeeAdvance(id, type) {
+        if (!confirm('Delete this advance? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            if (type === 'cash') {
+                await DB.delete('advances', id);
+            } else {
+                await DB.delete('productAdvances', id);
+                // Also delete from advances table if it exists
+                const allAdvances = await DB.getAll('advances', true);
+                const matchingAdvance = allAdvances.find(a => 
+                    a.type === 'product' && 
+                    String(a.employeeId) === String(this.currentEmployeeId)
+                );
+                if (matchingAdvance) {
+                    await DB.delete('advances', matchingAdvance.id);
+                }
+            }
+            
+            App.showToast('Advance deleted', 'success');
+            
+            // Reload data and re-render
+            const [cashAdvances, productAdvances, repayments, attendance] = await Promise.all([
+                DB.getAll('advances'),
+                DB.getAll('productAdvances'),
+                DB.getAll('repayments'),
+                DB.getAll('attendance')
+            ]);
+
+            this.currentEmployeeData = {
+                cashAdvances,
+                productAdvances,
+                repayments,
+                attendance
+            };
+
+            this.renderEmployeeDetails();
+        } catch (error) {
+            console.error('Error deleting advance:', error);
+            App.showToast('Error deleting advance', 'error');
+        }
+    },
+
     async openDetailsModal(employeeId) {
         const modal = document.getElementById('employeeDetailsModal');
         const content = document.getElementById('employeeDetailsContent');
@@ -594,15 +668,19 @@ const EmployeesModule = {
 
         const recentCombined = [
             ...cashRows.map(row => ({
+                id: row.id,
                 date: row.date,
                 type: 'Cash',
+                advanceType: 'cash',
                 product: '—',
                 qty: '—',
                 amount: parseFloat(row.amount) || 0
             })),
             ...productRows.map(row => ({
+                id: row.id,
                 date: row.date,
                 type: 'Product',
+                advanceType: 'product',
                 product: row.productName || '—',
                 qty: row.quantity || 0,
                 amount: parseFloat(row.totalValue) || 0
@@ -632,6 +710,7 @@ const EmployeesModule = {
                             <th>Product</th>
                             <th>Qty</th>
                             <th>Amount</th>
+                            <th style="width: 80px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -642,10 +721,14 @@ const EmployeesModule = {
                                 <td>${row.product}</td>
                                 <td>${row.qty}</td>
                                 <td>৳${this.formatCurrency(row.amount)}</td>
+                                <td>
+                                    <button class="btn btn-small btn-secondary" onclick="EmployeesModule.editEmployeeAdvance(${row.id}, '${row.advanceType}')" style="padding: 2px 6px; font-size: 11px; margin-right: 2px;">✏️</button>
+                                    <button class="btn btn-small btn-danger" onclick="EmployeesModule.deleteEmployeeAdvance(${row.id}, '${row.advanceType}')" style="padding: 2px 6px; font-size: 11px; background: #dc3545;">🗑️</button>
+                                </td>
                             </tr>
                         `).join('')}
                         <tr>
-                            <td colspan="4" style="text-align:right; font-weight:700;">Total</td>
+                            <td colspan="5" style="text-align:right; font-weight:700;">Total</td>
                             <td style="font-weight:700;">৳${this.formatCurrency(totalCash + totalProduct)}</td>
                         </tr>
                     </tbody>

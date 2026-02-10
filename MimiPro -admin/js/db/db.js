@@ -383,6 +383,66 @@ const DB = {
                 reject(error);
             }
         });
+    },
+
+    /**
+     * Delete all records in a store that match a specific employeeId
+     * @param {string} storeName - The name of the store
+     * @param {string} employeeId - The employee ID to match
+     * @returns {Promise<number>} Number of records deleted
+     */
+    async deleteByEmployeeId(storeName, employeeId) {
+        await this.ensureConnection();
+        try {
+            const allRecords = await this.getAll(storeName, true); // Include deleted
+            const recordsToDelete = allRecords.filter(record => 
+                String(record.employeeId) === String(employeeId)
+            );
+            
+            for (const record of recordsToDelete) {
+                if (record.id) {
+                    await this.delete(storeName, record.id);
+                }
+            }
+            
+            console.log(`🗑️ Deleted ${recordsToDelete.length} records from ${storeName} for employee ${employeeId}`);
+            return recordsToDelete.length;
+        } catch (error) {
+            console.error(`❌ Error deleting records from ${storeName}:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Delete all records in deliveries where deliverymanId matches employeeId
+     * @param {string} employeeId - The employee ID to match
+     * @returns {Promise<number>} Number of records deleted
+     */
+    async deleteDeliveriesByEmployeeId(employeeId) {
+        await this.ensureConnection();
+        try {
+            const allDeliveries = await this.getAll('deliveries', true);
+            const deliveriesToDelete = allDeliveries.filter(delivery => {
+                // Check if any deliveryman in the employeeIds array matches
+                if (delivery.employeeIds && Array.isArray(delivery.employeeIds)) {
+                    return delivery.employeeIds.some(id => String(id) === String(employeeId));
+                }
+                // Also check legacy deliverymanId field
+                return String(delivery.deliverymanId) === String(employeeId);
+            });
+            
+            for (const delivery of deliveriesToDelete) {
+                if (delivery.id) {
+                    await this.delete('deliveries', delivery.id);
+                }
+            }
+            
+            console.log(`🗑️ Deleted ${deliveriesToDelete.length} delivery records for employee ${employeeId}`);
+            return deliveriesToDelete.length;
+        } catch (error) {
+            console.error('❌ Error deleting deliveries:', error);
+            throw error;
+        }
     }
 };
 

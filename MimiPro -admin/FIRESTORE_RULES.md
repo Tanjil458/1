@@ -51,17 +51,18 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
+    match /users/{companyId}/history/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
     // ==================== ADMIN PRIVATE COLLECTIONS ====================
     // Private admin data - only accessible by that admin's UID
     
     match /users/{userId}/expenses/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    match /users/{userId}/history/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
+
     match /users/{userId}/settings/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -81,11 +82,11 @@ service cloud.firestore {
 
 ## Why These Rules?
 
-- **Shared collections** (`attendance`, `delivery`, `employees`, `profile`, `credits`, `advances`, `stock`):
+- **Shared collections** (`attendance`, `delivery`, `employees`, `profile`, `credits`, `advances`, `stock`, `history`):
   - `allow read: if true` → Anyone can read (needed for employees to view data)
   - `allow write: if request.auth != null` → Only logged-in users (admin) can write
 
-- **Private collections** (`expenses`, `history`, `settings`):
+- **Private collections** (`expenses`, `settings`):
   - Only accessible by the admin who owns them (`request.auth.uid == userId`)
 
 ## Data Structure After Rules Update
@@ -100,11 +101,11 @@ Firestore Database Structure:
 │   │   ├── profile/                 ← READ: public, WRITE: admin
 │   │   ├── credits/                 ← READ: public, WRITE: admin
 │   │   ├── advances/                ← READ: public, WRITE: admin
-│   │   └── stock/                   ← READ: public, WRITE: admin
+│   │   ├── stock/                   ← READ: public, WRITE: admin
+│   │   └── history/                 ← READ: public, WRITE: admin
 │   │
 │   └── [admin's full UID]/
 │       ├── expenses/                ← READ/WRITE: admin only
-│       ├── history/                 ← READ/WRITE: admin only
 │       └── settings/                ← READ/WRITE: admin only
 ```
 

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Delivery Data from History Collection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .result {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        .loading {
+            background: #fefaef;
+            border: 1px solid #fed7aa;
+            color: #ea580c;
+        }
+        pre {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Delivery Data Access</h1>
+    <div id="results">
+        <div class="result loading">Testing delivery data access...</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-firestore.js';
+
+        // Firebase configuration - using actual project config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwlN548N9A0uRKiRGdvxmoASFCfJtvmo0",
+            authDomain: "mimipro-0458.firebaseapp.com",
+            projectId: "mimipro-0458",
+            storageBucket: "mimipro-0458.firebasestorage.app",
+            messagingSenderId: "414929851648",
+            appId: "1:414929851648:web:535b52279d5e894bfd8fe5"
+        };
+
+        let app, db;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            
+            await testDeliveryAccess();
+        } catch (error) {
+            displayResult("error", "Firebase initialization error: " + error.message);
+        }
+
+        async function testDeliveryAccess() {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+
+            try {
+                // Test access to history collection 
+                displayResult("loading", "Checking history collection structure...");
+                
+                const companyId = 'TEST_COMPANY'; // Replace with actual company ID
+                const employeeId = 'TEST_EMPLOYEE_1'; // Replace with actual employee ID
+                
+                // Test single employee query
+                const singleQuery = query(
+                    collection(db, 'users', companyId, 'history'),
+                    where('employeeId', '==', employeeId),
+                    orderBy('date', 'desc')
+                );
+                
+                const singleSnapshot = await getDocs(singleQuery);
+                displayResult("success", `Single employee query: Found ${singleSnapshot.size} records`);
+                
+                // Test multi-employee query
+                const multiQuery = query(
+                    collection(db, 'users', companyId, 'history'),
+                    where('employeeIds', 'array-contains', employeeId),
+                    orderBy('date', 'desc')
+                );
+                
+                const multiSnapshot = await getDocs(multiQuery);
+                displayResult("success", `Multi-employee query: Found ${multiSnapshot.size} records`);
+                
+                // Show sample records
+                const allRecords = [];
+                
+                singleSnapshot.forEach(doc => {
+                    allRecords.push({id: doc.id, ...doc.data(), source: 'single'});
+                });
+                
+                multiSnapshot.forEach(doc => {
+                    if (!allRecords.find(r => r.id === doc.id)) {
+                        allRecords.push({id: doc.id, ...doc.data(), source: 'multi'});
+                    }
+                });
+                
+                if (allRecords.length > 0) {
+                    displayResult("success", `Total unique records: ${allRecords.length}`);
+                    
+                    // Show structure of first few records
+                    const sampleData = allRecords.slice(0, 3).map(record => ({
+                        id: record.id,
+                        date: record.date,
+                        customerName: record.customerName || 'N/A',
+                        employeeId: record.employeeId,
+                        employeeIds: record.employeeIds,
+                        calculation: record.calculation ? `${record.calculation.length} products` : 'None',
+                        totalSales: record.sales || 'N/A',
+                        totalCash: record.cash || 'N/A',
+                        source: record.source
+                    }));
+                    
+                    displayResult("success", "Sample records structure:", JSON.stringify(sampleData, null, 2));
+                } else {
+                    displayResult("error", "No delivery records found for this employee");
+                }
+                
+            } catch (error) {
+                displayResult("error", "Query error: " + error.message, error.stack);
+            }
+        }
+
+        function displayResult(type, message, details = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `
+                <strong>${message}</strong>
+                ${details ? `<pre>${details}</pre>` : ''}
+            `;
+            results.appendChild(div);
+        }
+    </script>
+</body>
+</html>

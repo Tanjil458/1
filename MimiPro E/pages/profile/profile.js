@@ -4,13 +4,14 @@ const Profile = {
     async render() {
         const session = getSession();
 
-        // Try to get profile from IndexedDB
+        // Try to get profile from Firestore
         let profile = null;
-        try {
-            const profiles = await employeeDB.getAll(STORES.PROFILE);
-            profile = profiles.find(p => p.employeeId === session.employeeId);
-        } catch (error) {
-            console.error('Error loading profile:', error);
+        if (session && session.companyId && session.employeeId) {
+            try {
+                profile = await DirectFirestore.getEmployeeProfile(session.companyId, session.employeeId);
+            } catch (error) {
+                console.error('Error loading profile from Firestore:', error);
+            }
         }
 
         // Fallback to session data
@@ -57,7 +58,7 @@ const Profile = {
                     </div>
                     <div class="info-row">
                         <span class="info-label">Last Synced</span>
-                        <span class="info-value">${EmployeeSyncService.getLastSyncTime()}</span>
+                        <span class="info-value">Live Data</span>
                     </div>
                 </div>
             </div>

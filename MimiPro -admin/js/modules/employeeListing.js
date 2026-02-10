@@ -222,8 +222,18 @@ const EmployeeListingModule = {
             // Generate employee ID
             let employeeId;
             if (this.editIndex === -1) {
-                const count = this.employees.length + 1;
-                employeeId = `EMP${String(count).padStart(3, '0')}`;
+                // For new employees, find the highest existing employee number
+                // Include deleted employees to prevent ID reuse
+                const allEmployees = await DB.getAll('employees', true);
+                const maxNum = allEmployees.reduce((max, emp) => {
+                    if (emp.employeeId && emp.employeeId.startsWith('EMP')) {
+                        const num = parseInt(emp.employeeId.replace('EMP', ''));
+                        return num > max ? num : max;
+                    }
+                    return max;
+                }, 0);
+                employeeId = `EMP${String(maxNum + 1).padStart(3, '0')}`;
+                console.log(`📝 Generated new employee ID: ${employeeId} (highest was EMP${String(maxNum).padStart(3, '0')})`);
             } else {
                 employeeId = this.employees[this.editIndex].employeeId;
             }
@@ -362,8 +372,30 @@ const EmployeeListingModule = {
         if (!this.pendingDeleteId) return;
 
         try {
+            // Get employee data before deleting to access employeeId
+            const employee = await DB.getById('employees', this.pendingDeleteId);
+            if (!employee) {
+                App.showToast('Employee not found', 'error');
+                return;
+            }
+
+            const employeeId = employee.employeeId;
+            console.log(`🗑️ Deleting employee ${employee.name} (${employeeId}) and all related data...`);
+
+            // Delete all related data (cascading delete)
+            await Promise.all([
+                DB.deleteByEmployeeId('advances', employeeId),
+                DB.deleteByEmployeeId('productAdvances', employeeId),
+                DB.deleteByEmployeeId('attendance', employeeId),
+                DB.deleteByEmployeeId('salaryReports', employeeId),
+                DB.deleteDeliveriesByEmployeeId(employeeId)
+            ]);
+
+            // Finally delete the employee record
             await DB.delete('employees', this.pendingDeleteId);
-            App.showToast('Employee deleted', 'success');
+            
+            console.log('✅ Employee and all related data deleted successfully');
+            App.showToast('Employee and all related data deleted', 'success');
             this.closeDeleteConfirm();
             await this.loadEmployees();
         } catch (error) {

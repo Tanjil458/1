@@ -4,8 +4,8 @@ const Advances = {
     async render() {
         try {
             const session = getSession();
-            if (!session || !session.employeeId) {
-                return `<div class="empty-state"><div class="empty-title">No session found</div></div>`;
+            if (!session || !session.employeeId || !session.companyId) {
+                return `<div class="empty-state"><div class="empty-title">Session incomplete</div></div>`;
             }
             
             const employeeId = session.employeeId;
@@ -22,9 +22,9 @@ const Advances = {
             const [year, month] = monthKey.split('-');
             const monthName = new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
-            // Get advances data
-            const allAdvances = (await employeeDB.getAll(STORES.ADVANCES)).filter(adv => String(adv.employeeId) === String(employeeId));
-            console.log('💰 Loaded', allAdvances.length, 'advance records from local DB');
+            // Get advances data directly from Firestore
+            const allAdvances = await DirectFirestore.getEmployeeAdvances(session.companyId, employeeId);
+            console.log('💰 Loaded', allAdvances.length, 'advance records directly from Firestore');
             
             // Log sample for debugging
             if (allAdvances.length > 0) {
@@ -37,13 +37,12 @@ const Advances = {
                     reason: allAdvances[0].reason
                 });
             } else {
-                console.warn('⚠️ No advances found in local DB for this employee');
+                console.warn('⚠️ No advances found for this employee');
                 console.warn('💡 Possible reasons:');
                 console.warn('   1. Admin has not created any advances yet');
                 console.warn('   2. Admin has not synced data to Firestore');
                 console.warn('   3. EmployeeId mismatch between admin and employee app');
-                console.warn('   4. Employee app has not synced yet');
-                console.warn('📌 Action: Click "Sync Now" button or ask admin to create advances and sync');
+                console.warn('📌 Action: Ask admin to create advances and sync');
             }
 
             // Sort by date descending
@@ -53,8 +52,38 @@ const Advances = {
             const monthAdvances = allAdvances.filter(adv => adv.date && adv.date.startsWith(monthKey));
             const totalAdvances = monthAdvances.reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
 
-            // Get employee salary (assumed monthly for now)
-            const monthlySalary = parseFloat(session.salary) || 9999;
+            // Calculate salary based on employee's salary type (daily or monthly)
+            let monthlySalary = 0;
+            let salaryCalculationDetails = '';
+            
+            const salaryType = (session.salaryType || 'Daily').toLowerCase();
+            const salaryRate = parseFloat(session.salary) || 0;
+            
+            console.log(`💰 Employee Salary Info: Type=${salaryType}, Rate=৳${salaryRate}`);
+            
+            if (salaryType === 'daily' && salaryRate > 0) {
+                // Get attendance for current month to calculate working days
+                const attendance = await DirectFirestore.getEmployeeAttendance(session.companyId, employeeId);
+                const monthAttendance = attendance.filter(att => att.date && att.date.startsWith(monthKey));
+                const workingDays = monthAttendance.length;
+                
+                monthlySalary = salaryRate * workingDays;
+                salaryCalculationDetails = `${workingDays} × ৳${MoneyUtils.formatMoney(salaryRate)} = ৳${MoneyUtils.formatMoney(monthlySalary)}`;
+                
+                console.log(`💰 Daily Salary: ${workingDays} days × ৳${salaryRate} daily rate = ৳${monthlySalary}`);
+            } else if (salaryType === 'monthly' && salaryRate > 0) {
+                // Fixed monthly salary
+                monthlySalary = salaryRate;
+                salaryCalculationDetails = `Monthly: ৳${MoneyUtils.formatMoney(monthlySalary)}`;
+                
+                console.log(`💰 Monthly Salary: ৳${monthlySalary}`);
+            } else {
+                // Fallback if no salary data
+                monthlySalary = 0;
+                salaryCalculationDetails = `No salary data available`;
+                console.warn('⚠️ No salary information found for employee');
+            }
+            
             const remainingBalance = monthlySalary - totalAdvances;
 
         return `
@@ -75,7 +104,7 @@ const Advances = {
                     <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #2c3e50;">💰 Salary Calculation for ${monthName}</h4>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
                         <span style="font-size: 14px; color: #6b7280;">Monthly Salary</span>
-                        <strong style="font-size: 14px; color: #2c3e50;">৳${MoneyUtils.formatMoney(monthlySalary)}</strong>
+                        <strong style="font-size: 14px; color: #2c3e50;">${salaryCalculationDetails}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e9ecef;">
                         <span style="font-size: 14px; color: #dc3545;">Total Advances (This Month)</span>
