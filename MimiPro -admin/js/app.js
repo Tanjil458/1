@@ -18,6 +18,7 @@ const App = {
         this.applyTheme(); // Apply saved theme
         this.setupNavigation();
         this.setupEventListeners();
+        this.initPullToRefresh();
         this.loadModules();
         this.showPage(this.state.currentPage);
         
@@ -144,6 +145,120 @@ const App = {
                 this.refreshCurrentPage();
             }
         });
+    },
+
+    initPullToRefresh() {
+        const container = document.getElementById('pageContent');
+        const indicator = document.getElementById('pullToRefresh');
+        if (!container || !indicator) {
+            console.log('⚠️ Pull-to-refresh elements not found');
+            return;
+        }
+
+        const textEl = indicator.querySelector('.pull-text');
+        const threshold = 70;
+        let startY = 0;
+        let currentY = 0;
+        let pulling = false;
+        let canPull = false;
+
+        const setState = (state) => {
+            const show = state !== 'hidden';
+            indicator.classList.toggle('show', show);
+            indicator.classList.toggle('refreshing', state === 'refreshing');
+
+            if (textEl) {
+                if (state === 'release') {
+                    textEl.textContent = 'Release to refresh';
+                } else if (state === 'refreshing') {
+                    textEl.textContent = 'Refreshing...';
+                } else {
+                    textEl.textContent = 'Pull to refresh';
+                }
+            }
+        };
+
+        container.addEventListener('touchstart', (event) => {
+            // Disable pull-to-refresh on delivery calculation page
+            if (this.state.currentPage === 'deliveryPage') {
+                canPull = false;
+                return;
+            }
+            
+            if (container.scrollTop === 0 && !this.state.isRefreshing) {
+                startY = event.touches[0].clientY;
+                currentY = startY;
+                canPull = true;
+            } else {
+                canPull = false;
+            }
+        }, { passive: true });
+
+        container.addEventListener('touchmove', (event) => {
+            if (!canPull) {
+                return;
+            }
+
+            currentY = event.touches[0].clientY;
+            const delta = currentY - startY;
+
+            if (delta <= 0) {
+                setState('hidden');
+                return;
+            }
+
+            pulling = true;
+            event.preventDefault();
+            setState(delta >= threshold ? 'release' : 'pull');
+        }, { passive: false });
+
+        container.addEventListener('touchend', async () => {
+            if (!canPull) {
+                return;
+            }
+
+            const delta = currentY - startY;
+            if (pulling && delta >= threshold) {
+                await this.refreshCurrentPageWithIndicator();
+            }
+
+            setState('hidden');
+            pulling = false;
+            canPull = false;
+        });
+
+        this.pullToRefresh = { setState };
+        console.log('✅ Pull-to-refresh initialized');
+    },
+
+    async refreshCurrentPageWithIndicator() {
+        if (this.state.isRefreshing) {
+            return;
+        }
+
+        this.state.isRefreshing = true;
+        if (this.pullToRefresh?.setState) {
+            this.pullToRefresh.setState('refreshing');
+        }
+
+        try {
+            // Call the current module's refresh method
+            if (this.state.currentModule && this.state.currentModule.refresh) {
+                await this.state.currentModule.refresh();
+            } else {
+                // Fallback: reload the current page
+                this.showPage(this.state.currentPage);
+            }
+            this.showToast('Refreshed', 'success');
+        } catch (error) {
+            console.error('Error refreshing page:', error);
+            this.showToast('Refresh failed', 'error');
+        } finally {
+            this.state.isRefreshing = false;
+            if (this.pullToRefresh?.setState) {
+                this.pullToRefresh.setState('hidden');
+            }
+        }
     },
 
     loadModules() {

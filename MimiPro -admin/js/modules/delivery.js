@@ -859,10 +859,6 @@ const DeliveryModule = {
 		}
 
 		const selectedEmployees = this.getSelectedEmployees();
-		if (!selectedEmployees.length) {
-			this.showMessage('Please select delivery employee', 'warning');
-			return;
-		}
 
 		const hasProduct = productRows.some(row => (row.querySelector('.product-select')?.value || '') !== '');
 		if (!hasProduct) {
@@ -934,16 +930,26 @@ const DeliveryModule = {
 		try {
 			if (this.editingRecord?.id) {
 				await DB.update('history', { ...payload, id: this.editingRecord.id });
-				for (const emp of selectedEmployees) {
-					await this.upsertAttendance(emp.id, emp.name, payload.date, this.editingRecord.id);
+				if (selectedEmployees.length) {
+					for (const emp of selectedEmployees) {
+						await this.upsertAttendance(emp.id, emp.name, payload.date, this.editingRecord.id);
+					}
 				}
+				await this.syncDeliveryCredits({
+					historyId: this.editingRecord.id,
+					date: payload.date,
+					customerFallback: customerName,
+					creditRows: credit
+				});
 				this.showMessage('Calculation Updated Successfully!', 'success');
 			} else {
 				const historyId = await DB.add('history', payload);
-				for (const emp of selectedEmployees) {
-					await this.upsertAttendance(emp.id, emp.name, payload.date, historyId);
+				if (selectedEmployees.length) {
+					for (const emp of selectedEmployees) {
+						await this.upsertAttendance(emp.id, emp.name, payload.date, historyId);
+					}
 				}
-				await this.addCreditsFromDelivery({
+				await this.syncDeliveryCredits({
 					historyId,
 					date: payload.date,
 					customerFallback: customerName,
@@ -960,22 +966,49 @@ const DeliveryModule = {
 		}
 	},
 
-	async addCreditsFromDelivery({ historyId, date, customerFallback, creditRows }) {
-		if (!Array.isArray(creditRows) || creditRows.length === 0) return;
+	async syncDeliveryCredits({ historyId, date, customerFallback, creditRows }) {
 		const creditDate = date || new Date().toISOString();
-		const entries = creditRows
-			.filter(row => (parseFloat(row.amount) || 0) > 0)
-			.map(row => ({
-				customer_name: row.name || customerFallback || 'Unknown',
-				customer_phone: '',
-				initial_amount: parseFloat(row.amount) || 0,
-				balance: parseFloat(row.amount) || 0,
-				credit_date: creditDate,
-				notes: `From Delivery #${historyId}`,
-				payment_history: []
-			}));
+		const noteTag = `From Delivery #${historyId}`;
 
-		if (!entries.length) return;
+		const existingCredits = await DB.getAll('credits', true);
+		const deliveryCredits = (existingCredits || []).filter(entry => {
+			if (!entry || entry.deleted) return false;
+			return String(entry.deliveryHistoryId || '') === String(historyId)
+				|| (entry.notes && entry.notes.trim() === noteTag);
+		});
+
+		for (const entry of deliveryCredits) {
+			try {
+				await DB.delete('credits', entry.id);
+			} catch (error) {
+				console.error('Failed to delete previous delivery credit:', error);
+			}
+		}
+
+		if (!Array.isArray(creditRows) || creditRows.length === 0) return;
+
+		const uniqueMap = new Map();
+		creditRows
+			.filter(row => (parseFloat(row.amount) || 0) > 0)
+			.forEach(row => {
+				const name = (row.name || customerFallback || 'Unknown').trim();
+				const amount = parseFloat(row.amount) || 0;
+				const key = `${name}::${amount}`;
+				if (!uniqueMap.has(key)) {
+					uniqueMap.set(key, { name, amount });
+				}
+			});
+
+		const entries = Array.from(uniqueMap.values()).map(item => ({
+			customer_name: item.name,
+			customer_phone: '',
+			initial_amount: item.amount,
+			balance: item.amount,
+			credit_date: creditDate,
+			notes: noteTag,
+			deliveryHistoryId: historyId,
+			payment_history: []
+		}));
 
 		for (const entry of entries) {
 			try {

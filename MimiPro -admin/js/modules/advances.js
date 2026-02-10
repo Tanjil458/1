@@ -151,6 +151,7 @@ const AdvancesModule = {
 									<th>Employee</th>
 									<th>Amount</th>
 									<th>Note</th>
+									<th style="width: 100px;">Actions</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -170,6 +171,7 @@ const AdvancesModule = {
 									<th>Qty</th>
 									<th>Unit</th>
 									<th>Total</th>
+									<th style="width: 100px;">Actions</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -300,7 +302,8 @@ const AdvancesModule = {
 			App.showToast('Employee not found', 'error');
 			return;
 		}
-		await DB.add('advances', {
+
+		const advanceData = {
 			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
 			amount,
@@ -309,13 +312,40 @@ const AdvancesModule = {
 			reason: note, // Add reason field for employee app display
 			status: 'pending', // Default status
 			type: 'cash'
-		});
+		};
 
-		App.showToast('Cash advance saved', 'success');
-		document.getElementById('cashAdvanceAmount').value = '';
-		document.getElementById('cashAdvanceNote').value = '';
-		await this.loadData();
-		this.renderLists();
+		try {
+			if (this.editingCashAdvanceId) {
+				// Update existing advance
+				advanceData.id = this.editingCashAdvanceId;
+				await DB.update('advances', advanceData);
+				App.showToast('Cash advance updated', 'success');
+				this.editingCashAdvanceId = null;
+				
+				// Reset button
+				const btn = document.getElementById('saveCashAdvanceBtn');
+				if (btn) {
+					btn.textContent = 'Save Cash Advance';
+					btn.style.background = '';
+				}
+				
+				// Remove cancel button
+				const cancelBtn = document.getElementById('cancelCashAdvanceEdit');
+				if (cancelBtn) cancelBtn.remove();
+			} else {
+				// Create new advance
+				await DB.add('advances', advanceData);
+				App.showToast('Cash advance saved', 'success');
+			}
+
+			document.getElementById('cashAdvanceAmount').value = '';
+			document.getElementById('cashAdvanceNote').value = '';
+			await this.loadData();
+			this.renderLists();
+		} catch (error) {
+			console.error('Error saving cash advance:', error);
+			App.showToast('Error saving advance', 'error');
+		}
 	},
 
 	async saveProductAdvance() {
@@ -337,8 +367,7 @@ const AdvancesModule = {
 			return;
 		}
 		
-		// Store product advance as a regular advance with amount=totalValue
-		await DB.add('advances', {
+		const advanceData = {
 			employeeId: String(employee.employeeId), // Use custom employee ID not database ID
 			employeeName: employee?.name || '',
 			amount: totalValue, // Store total value as amount for employee app
@@ -350,10 +379,9 @@ const AdvancesModule = {
 			productName,
 			quantity,
 			unitPrice
-		});
-		
-		// Also save to productAdvances for admin tracking
-		await DB.add('productAdvances', {
+		};
+
+		const productAdvanceData = {
 			employeeId: String(employee.employeeId),
 			employeeName: employee?.name || '',
 			productName,
@@ -362,15 +390,56 @@ const AdvancesModule = {
 			totalValue,
 			date,
 			type: 'product'
-		});
+		};
 
-		App.showToast('Product advance saved', 'success');
-		document.getElementById('productAdvanceName').value = '';
-		document.getElementById('productAdvanceQty').value = '';
-		document.getElementById('productAdvancePrice').value = '';
-		document.getElementById('productAdvanceTotal').value = '';
-		await this.loadData();
-		this.renderLists();
+		try {
+			if (this.editingProductAdvanceId) {
+				// Update existing advance
+				productAdvanceData.id = this.editingProductAdvanceId;
+				await DB.update('productAdvances', productAdvanceData);
+				
+				// Also update in advances table
+				const allAdvances = await DB.getAll('advances', true);
+				const matchingAdvance = allAdvances.find(a => 
+					a.type === 'product' && 
+					String(a.employeeId) === String(employee.employeeId) &&
+					a.date === date
+				);
+				if (matchingAdvance) {
+					advanceData.id = matchingAdvance.id;
+					await DB.update('advances', advanceData);
+				}
+				
+				App.showToast('Product advance updated', 'success');
+				this.editingProductAdvanceId = null;
+				
+				// Reset button
+				const btn = document.getElementById('saveProductAdvanceBtn');
+				if (btn) {
+					btn.textContent = 'Save Product Advance';
+					btn.style.background = '';
+				}
+				
+				// Remove cancel button
+				const cancelBtn = document.getElementById('cancelProductAdvanceEdit');
+				if (cancelBtn) cancelBtn.remove();
+			} else {
+				// Create new advance
+				await DB.add('advances', advanceData);
+				await DB.add('productAdvances', productAdvanceData);
+				App.showToast('Product advance saved', 'success');
+			}
+
+			document.getElementById('productAdvanceName').value = '';
+			document.getElementById('productAdvanceQty').value = '';
+			document.getElementById('productAdvancePrice').value = '';
+			document.getElementById('productAdvanceTotal').value = '';
+			await this.loadData();
+			this.renderLists();
+		} catch (error) {
+			console.error('Error saving product advance:', error);
+			App.showToast('Error saving advance', 'error');
+		}
 	},
 
 	async saveRepayment() {
@@ -421,16 +490,20 @@ const AdvancesModule = {
 		const productRows = this.productAdvances.filter(filterBy);
 		const repaymentRows = this.repayments.filter(filterBy);
 
-		this.renderTableRows('cashAdvanceTable', cashRows, 4, (row) => `
+		this.renderTableRows('cashAdvanceTable', cashRows, 5, (row) => `
 			<tr>
 				<td>${this.formatDate(row.date)}</td>
 				<td>${row.employeeName || this.getEmployeeName(row.employeeId)}</td>
 				<td>৳${this.formatCurrency(row.amount)}</td>
 				<td>${row.note || '—'}</td>
+				<td>
+					<button class="btn btn-small btn-secondary" onclick="AdvancesModule.editCashAdvance(${row.id})" style="padding: 4px 8px; font-size: 12px; margin-right: 4px;">✏️</button>
+					<button class="btn btn-small btn-danger" onclick="AdvancesModule.deleteCashAdvance(${row.id})" style="padding: 4px 8px; font-size: 12px; background: #dc3545;">🗑️</button>
+				</td>
 			</tr>
 		`);
 
-		this.renderTableRows('productAdvanceTable', productRows, 6, (row) => `
+		this.renderTableRows('productAdvanceTable', productRows, 7, (row) => `
 			<tr>
 				<td>${this.formatDate(row.date)}</td>
 				<td>${row.employeeName || this.getEmployeeName(row.employeeId)}</td>
@@ -438,6 +511,10 @@ const AdvancesModule = {
 				<td>${row.quantity || 0}</td>
 				<td>৳${this.formatCurrency(row.unitPrice)}</td>
 				<td>৳${this.formatCurrency(row.totalValue)}</td>
+				<td>
+					<button class="btn btn-small btn-secondary" onclick="AdvancesModule.editProductAdvance(${row.id})" style="padding: 4px 8px; font-size: 12px; margin-right: 4px;">✏️</button>
+					<button class="btn btn-small btn-danger" onclick="AdvancesModule.deleteProductAdvance(${row.id})" style="padding: 4px 8px; font-size: 12px; background: #dc3545;">🗑️</button>
+				</td>
 			</tr>
 		`);
 
@@ -513,6 +590,161 @@ const AdvancesModule = {
 		const yyyy = now.getFullYear();
 		const mm = String(now.getMonth() + 1).padStart(2, '0');
 		return `${yyyy}-${mm}`;
+	},
+
+	async editCashAdvance(id) {
+		const advance = this.cashAdvances.find(a => a.id === id);
+		if (!advance) {
+			App.showToast('Advance not found', 'error');
+			return;
+		}
+
+		// Pre-fill the form with existing data
+		document.getElementById('cashAdvanceEmployee').value = advance.employeeId || '';
+		document.getElementById('cashAdvanceAmount').value = advance.amount || '';
+		document.getElementById('cashAdvanceDate').value = advance.date || '';
+		document.getElementById('cashAdvanceNote').value = advance.note || '';
+
+		// Store the ID for updating
+		this.editingCashAdvanceId = id;
+		
+		// Change button text and add cancel button if not exists
+		const btn = document.getElementById('saveCashAdvanceBtn');
+		if (btn) {
+			btn.textContent = 'Update Cash Advance';
+			btn.style.background = '#ffc107';
+			
+			// Add cancel button if it doesn't exist
+			if (!document.getElementById('cancelCashAdvanceEdit')) {
+				const cancelBtn = document.createElement('button');
+				cancelBtn.id = 'cancelCashAdvanceEdit';
+				cancelBtn.className = 'btn btn-secondary';
+				cancelBtn.textContent = 'Cancel';
+				cancelBtn.style.marginLeft = '8px';
+				cancelBtn.onclick = () => this.cancelCashAdvanceEdit();
+				btn.parentNode.insertBefore(cancelBtn, btn);
+			}
+		}
+
+		// Scroll to form
+		document.getElementById('cashAdvanceEmployee').scrollIntoView({ behavior: 'smooth', block: 'center' });
+		App.showToast('Update the fields and click Update', 'info');
+	},
+
+	cancelCashAdvanceEdit() {
+		this.editingCashAdvanceId = null;
+		document.getElementById('cashAdvanceAmount').value = '';
+		document.getElementById('cashAdvanceNote').value = '';
+		
+		const btn = document.getElementById('saveCashAdvanceBtn');
+		if (btn) {
+			btn.textContent = 'Save Cash Advance';
+			btn.style.background = '';
+		}
+		
+		const cancelBtn = document.getElementById('cancelCashAdvanceEdit');
+		if (cancelBtn) cancelBtn.remove();
+	},
+
+	async deleteCashAdvance(id) {
+		if (!confirm('Delete this cash advance? This cannot be undone.')) {
+			return;
+		}
+
+		try {
+			await DB.delete('advances', id);
+			App.showToast('Cash advance deleted', 'success');
+			await this.loadData();
+			this.renderLists();
+		} catch (error) {
+			console.error('Error deleting cash advance:', error);
+			App.showToast('Error deleting advance', 'error');
+		}
+	},
+
+	async editProductAdvance(id) {
+		const advance = this.productAdvances.find(a => a.id === id);
+		if (!advance) {
+			App.showToast('Product advance not found', 'error');
+			return;
+		}
+
+		// Pre-fill the form with existing data
+		document.getElementById('productAdvanceEmployee').value = advance.employeeId || '';
+		document.getElementById('productAdvanceName').value = advance.productName || '';
+		document.getElementById('productAdvanceQty').value = advance.quantity || '';
+		document.getElementById('productAdvancePrice').value = advance.unitPrice || '';
+		document.getElementById('productAdvanceTotal').value = advance.totalValue || '';
+		document.getElementById('productAdvanceDate').value = advance.date || '';
+
+		// Store the ID for updating
+		this.editingProductAdvanceId = id;
+		
+		// Change button text and add cancel button
+		const btn = document.getElementById('saveProductAdvanceBtn');
+		if (btn) {
+			btn.textContent = 'Update Product Advance';
+			btn.style.background = '#ffc107';
+			
+			// Add cancel button if it doesn't exist
+			if (!document.getElementById('cancelProductAdvanceEdit')) {
+				const cancelBtn = document.createElement('button');
+				cancelBtn.id = 'cancelProductAdvanceEdit';
+				cancelBtn.className = 'btn btn-secondary';
+				cancelBtn.textContent = 'Cancel';
+				cancelBtn.style.marginLeft = '8px';
+				cancelBtn.onclick = () => this.cancelProductAdvanceEdit();
+				btn.parentNode.insertBefore(cancelBtn, btn);
+			}
+		}
+
+		// Scroll to form
+		document.getElementById('productAdvanceEmployee').scrollIntoView({ behavior: 'smooth', block: 'center' });
+		App.showToast('Update the fields and click Update', 'info');
+	},
+
+	cancelProductAdvanceEdit() {
+		this.editingProductAdvanceId = null;
+		document.getElementById('productAdvanceName').value = '';
+		document.getElementById('productAdvanceQty').value = '';
+		document.getElementById('productAdvancePrice').value = '';
+		document.getElementById('productAdvanceTotal').value = '';
+		
+		const btn = document.getElementById('saveProductAdvanceBtn');
+		if (btn) {
+			btn.textContent = 'Save Product Advance';
+			btn.style.background = '';
+		}
+		
+		const cancelBtn = document.getElementById('cancelProductAdvanceEdit');
+		if (cancelBtn) cancelBtn.remove();
+	},
+
+	async deleteProductAdvance(id) {
+		if (!confirm('Delete this product advance? This cannot be undone.')) {
+			return;
+		}
+
+		try {
+			await DB.delete('productAdvances', id);
+			
+			// Also delete from advances table if it exists
+			const allAdvances = await DB.getAll('advances', true);
+			const matchingAdvance = allAdvances.find(a => 
+				a.type === 'product' && 
+				a.productName === this.productAdvances.find(p => p.id === id)?.productName
+			);
+			if (matchingAdvance) {
+				await DB.delete('advances', matchingAdvance.id);
+			}
+			
+			App.showToast('Product advance deleted', 'success');
+			await this.loadData();
+			this.renderLists();
+		} catch (error) {
+			console.error('Error deleting product advance:', error);
+			App.showToast('Error deleting advance', 'error');
+		}
 	},
 
 	refresh() {

@@ -34,20 +34,11 @@ const App = {
         // Initialize UI
         this.initNavigation();
         this.initSideNav();
-        this.initSyncButton();
         this.initLogoutButton();
+        this.initPullToRefresh();
 
         // Navigate to initial page
         await this.navigateTo('dashboard');
-
-        // Auto-sync on first load with a delay to ensure DB is ready
-        setTimeout(async () => {
-            console.log('⏱️ Waiting for IndexedDB to be fully ready...');
-            // Give IndexedDB time to fully initialize
-            await new Promise(r => setTimeout(r, 500));
-            console.log('🔄 Starting auto-sync...');
-            EmployeeSyncService.syncNow();
-        }, 1500);
     },
 
     setupConditionalNavigation(session) {
@@ -138,15 +129,6 @@ const App = {
         overlay.classList.remove('show');
     },
 
-    initSyncButton() {
-        const syncBtn = document.getElementById('syncBtn');
-        if (syncBtn) {
-            syncBtn.addEventListener('click', () => {
-                EmployeeSyncService.syncNow();
-            });
-        }
-    },
-
     initLogoutButton() {
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
@@ -155,6 +137,102 @@ const App = {
                     logout();
                 });
             });
+        }
+    },
+
+    initPullToRefresh() {
+        const container = document.getElementById('pageContent');
+        const indicator = document.getElementById('pullToRefresh');
+        if (!container || !indicator) {
+            return;
+        }
+
+        const textEl = indicator.querySelector('.pull-text');
+        const threshold = 70;
+        let startY = 0;
+        let currentY = 0;
+        let pulling = false;
+        let canPull = false;
+
+        const setState = (state) => {
+            const show = state !== 'hidden';
+            indicator.classList.toggle('show', show);
+            indicator.classList.toggle('refreshing', state === 'refreshing');
+
+            if (textEl) {
+                if (state === 'release') {
+                    textEl.textContent = 'Release to refresh';
+                } else if (state === 'refreshing') {
+                    textEl.textContent = 'Refreshing...';
+                } else {
+                    textEl.textContent = 'Pull to refresh';
+                }
+            }
+        };
+
+        container.addEventListener('touchstart', (event) => {
+            if (container.scrollTop === 0 && !this.isRefreshing) {
+                startY = event.touches[0].clientY;
+                currentY = startY;
+                canPull = true;
+            } else {
+                canPull = false;
+            }
+        }, { passive: true });
+
+        container.addEventListener('touchmove', (event) => {
+            if (!canPull) {
+                return;
+            }
+
+            currentY = event.touches[0].clientY;
+            const delta = currentY - startY;
+
+            if (delta <= 0) {
+                setState('hidden');
+                return;
+            }
+
+            pulling = true;
+            event.preventDefault();
+            setState(delta >= threshold ? 'release' : 'pull');
+        }, { passive: false });
+
+        container.addEventListener('touchend', async () => {
+            if (!canPull) {
+                return;
+            }
+
+            const delta = currentY - startY;
+            if (pulling && delta >= threshold) {
+                await this.refreshCurrentPage();
+            }
+
+            setState('hidden');
+            pulling = false;
+            canPull = false;
+        });
+
+        this.pullToRefresh = { setState };
+    },
+
+    async refreshCurrentPage() {
+        if (this.isRefreshing) {
+            return;
+        }
+
+        this.isRefreshing = true;
+        if (this.pullToRefresh?.setState) {
+            this.pullToRefresh.setState('refreshing');
+        }
+
+        try {
+            await this.navigateTo(this.currentPage);
+        } finally {
+            this.isRefreshing = false;
+            if (this.pullToRefresh?.setState) {
+                this.pullToRefresh.setState('hidden');
+            }
         }
     },
 
@@ -198,6 +276,8 @@ const App = {
                     ${html}
                 </section>
             `;
+
+            pageContent.scrollTop = 0;
 
             // Attach page-specific event listeners
             if (page.attachEventListeners) {

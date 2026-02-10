@@ -1361,6 +1361,13 @@
     box-shadow: 0 6px 20px rgba(91, 95, 237, 0.5);
 }
 
+/* Hide FAB when modal is open to prevent overlap with Save button */
+body:has(.modal.show) .fab {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
+}
+
 /* Delete Confirmation Popup */
 .delete-confirm-overlay {
     display: none;
